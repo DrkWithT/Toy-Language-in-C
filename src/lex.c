@@ -137,7 +137,7 @@ Token lexer_lex_word(Lexer *self, const charspan *s) {
     }
 
     const int tk_length = self->pos - tk_start;
-    TkTag temp_tag = tk_unknown;
+    TkTag temp_tag = tk_identifier;
 
     for (const LexItem *special_it = self->specials; special_it->literal != NULL; special_it++) {
         charspan lexeme;
