@@ -6,3 +6,4 @@
 build/
 bc_dump.txt
 compile_commands.json
+tiny_*
