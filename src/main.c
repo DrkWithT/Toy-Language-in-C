@@ -1,0 +1,88 @@
+#include <stdio.h>
+#include <string.h>
+
+#include "mystr.h"
+#include "lex.h"
+
+static const LexItem special_lexicals[] = {
+    (LexItem) {.literal = "NIL", .tag = tk_none},
+    (LexItem) {.literal = "TRUE", .tag = tk_true},
+    (LexItem) {.literal = "FALSE", .tag = tk_false},
+    (LexItem) {.literal = "LET", .tag = tk_keyword_let},
+    (LexItem) {.literal = "IF", .tag = tk_keyword_if},
+    (LexItem) {.literal = "ELSE", .tag = tk_keyword_else},
+    (LexItem) {.literal = "WHILE", .tag = tk_keyword_while},
+    (LexItem) {.literal = "RET", .tag = tk_keyword_ret},
+    (LexItem) {.literal = "FUN", .tag = tk_keyword_ret}
+};
+
+
+mystr read_file(const char *fname) {
+    FILE *fs = fopen(fname, "r");
+
+    if (!fs) {
+        return (mystr) {
+            .data = NULL,
+            .capacity = 0,
+            .length = 0
+        };
+    }
+
+    char chunk[64];
+    mystr source;
+    mystr_res(&source, 64);
+
+    size_t rc = 0;
+
+    while (1) {
+        rc = fread(chunk, sizeof(char), 32, fs);
+
+        if (rc == 0) {
+            break;
+        }
+
+        chunk[rc] = '\0';
+        mystr_append_raw(&source, chunk, rc);
+    }
+
+    if (ferror(fs)) {
+        perror("File read failed.");
+        return (mystr) {
+            .data = NULL,
+            .capacity = 0,
+            .length = 0
+        };
+    }
+
+    fclose(fs);
+    return source;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "usage: ./toyscript [-h | -v | <file name>]\n-h: help\n-v: show version\n");
+        return 1;
+    }
+
+    mystr source_str = read_file(argv[1]);
+
+    puts("Read source is:\n");
+    puts(mystr_raw(&source_str));
+
+    charspan source_view;
+    charspan_new(&source_view, mystr_raw(&source_str), mystr_len(&source_str));
+
+    Lexer tokenizer = make_lexer(&source_view, special_lexicals);
+    Token temp;
+    int token_count = 0;
+
+    while (!lexer_done(&tokenizer)) {
+        temp = lexer_next(&tokenizer, &source_view);
+
+        printf("Token #%d:\n(begin = %i, length = %i, tag = %i)\n\n", token_count + 1, temp.begin, temp.length, temp.tag);
+    }
+
+    charspan_del(&source_view);
+    mystr_del(&source_str);
+    return 0;
+}
