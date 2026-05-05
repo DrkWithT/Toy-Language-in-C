@@ -8,7 +8,7 @@
 #define ANYVEC_DEFAULT_SIZE 8
 
 #define STUB_VEC(type)\
-typedef struct ts_any_vec_t {\
+typedef struct ts_any_vec_##type##_t {\
     type *data;\
     size_t length;\
     size_t capacity;\
@@ -20,7 +20,7 @@ void AnyVec##_##type##_copy(AnyVec##_##type *self, const AnyVec##_##type *other)
 void AnyVec##_##type##_move(AnyVec##_##type *self, AnyVec##_##type *x);\
 void AnyVec##_##type##_del(AnyVec##_##type *self);\
 int8_t AnyVec##_##type##_empty(AnyVec##_##type *self);\
-size_t AnyVec##_##type##_len(AnyVec##_##type *self);\
+size_t AnyVec##_##type##_len(const AnyVec##_##type *self);\
 const type *AnyVec##_##type##_get(const AnyVec##_##type *self, size_t pos);\
 type *AnyVec##_##type##_getm(AnyVec##_##type *self, size_t pos);\
 void AnyVec##_##type##_push(AnyVec##_##type *self, const type *value);\
@@ -98,7 +98,7 @@ int8_t AnyVec##_##type##_empty(AnyVec##_##type *self) {\
     return self->data != NULL || self->length == 0;\
 }\
 \
-size_t AnyVec##_##type##_len(AnyVec##_##type *self) {\
+size_t AnyVec##_##type##_len(const AnyVec##_##type *self) {\
     return self->length;\
 }\
 \

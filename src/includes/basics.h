@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define MAYBE_UNUSED __attribute((unused))
+
 #define FATAL_ABORT(title, file, line, msg)\
 fprintf(stderr, "Error at %s:%d\n%s: %s\n", file, line, title, msg);\
 exit(1);\
