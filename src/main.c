@@ -2,7 +2,8 @@
 #include <string.h>
 
 #include "mystr.h"
-#include "lex.h"
+#include "bytecode.h"
+#include "compiler.h"
 
 static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "NIL", .tag = tk_none},
@@ -13,7 +14,15 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "ELSE", .tag = tk_keyword_else},
     (LexItem) {.literal = "WHILE", .tag = tk_keyword_while},
     (LexItem) {.literal = "RET", .tag = tk_keyword_ret},
-    (LexItem) {.literal = "FUN", .tag = tk_keyword_ret}
+    (LexItem) {.literal = "FUN", .tag = tk_keyword_fun},
+    (LexItem) {.literal = "*", .tag = tk_os_times},
+    (LexItem) {.literal = "/", .tag = tk_os_slash},
+    (LexItem) {.literal = "+", .tag = tk_os_plus},
+    (LexItem) {.literal = "-", .tag = tk_os_minus},
+    (LexItem) {.literal = "==", .tag = tk_os_equals},
+    (LexItem) {.literal = "!=", .tag = tk_os_bang_equals},
+    (LexItem) {.literal = "<", .tag = tk_os_lesser},
+    (LexItem) {.literal = ">", .tag = tk_os_greater}
 };
 
 
@@ -73,15 +82,18 @@ int main(int argc, char *argv[]) {
     charspan_new(&source_view, mystr_raw(&source_str), mystr_len(&source_str));
 
     Lexer tokenizer = make_lexer(&source_view, special_lexicals);
-    Token temp;
-    int token_count = 0;
+    Compiler compiler = make_compiler();
 
-    while (!lexer_done(&tokenizer)) {
-        temp = lexer_next(&tokenizer, &source_view);
+    Program program;
+    program_dud(&program);
 
-        printf("Token #%d:\n(begin = %i, length = %i, tag = %i)\n\n", token_count + 1, temp.begin, temp.length, temp.tag);
+    if (!compiler_do_source(&compiler, &tokenizer, &source_view, &program)) {
+        perror("Please check all compile errors above.");
+        return 1;
     }
 
+    program_del(&program);
+    compiler_del(&compiler);
     charspan_del(&source_view);
     mystr_del(&source_str);
     return 0;

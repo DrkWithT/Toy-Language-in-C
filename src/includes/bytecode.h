@@ -70,6 +70,8 @@ typedef struct vm_program_t {
     int entry_id;
 } Program;
 
+void program_dud(Program *self);
+void program_del(Program *self);
 void dump_program(const Program *pg);
 
 #endif

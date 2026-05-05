@@ -99,3 +99,13 @@ void dump_program(const Program *pg) {
 }
 
 IMPL_VEC(Chunk)
+
+void program_dud(Program *self) {
+    AnyVec_Chunk_dud(&self->chunks);
+    self->entry_id = 0;
+}
+
+void program_del(Program *self) {
+    AnyVec_Chunk_dud(&self->chunks);
+    self->entry_id = -1;
+}
