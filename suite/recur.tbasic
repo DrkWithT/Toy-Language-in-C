@@ -1,6 +1,4 @@
-#
-    test recursion of fib 30
-#
+`test recursion of fib 30`
 
 FUN fib(n):
     IF n < 2:

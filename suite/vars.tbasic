@@ -1,3 +1,5 @@
+`test simple variables`
+
 LET a : 1, b : 1;
 
 RET a + b;
