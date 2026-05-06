@@ -40,7 +40,7 @@ SymbolTable make_symbol_table() {
             .length = 0,
             .capacity = DEFAULT_SYMBOL_CAPACITY,
             .next_local_id = 1,     // ? Start from BP + 1 since BP holds the callee.
-            .next_global_id = 0
+            .next_global_id = 1     // ? Start from 1 since chunks 1+ are for other procedures.
         };
     }
 
@@ -57,6 +57,21 @@ void symbol_table_del(SymbolTable *self) {
     if (self->infos != NULL) {
         free(self->infos);
         self->infos = NULL;
+    }
+}
+
+void symbol_table_clear(SymbolTable *self) {
+    const int entry_n = self->length;
+
+    for (int i = 0; i < entry_n; i++) {
+        self->infos[i] = (SymbolInfo) {
+            .name = {
+                .data = NULL,
+                .length = 0
+            },
+            .id = 0,
+            .domain = symbol_constant
+        };
     }
 }
 
@@ -113,7 +128,8 @@ Compiler make_compiler() {
             .line = 0,
             .tag = tk_unknown
         },
-        .errors = 0
+        .errors = 0,
+        .chunk_idx = 0
     };
 }
 
@@ -157,8 +173,8 @@ void compiler_warn(Compiler *self, const char *msg, const Token *tk, const chars
     fprintf(stderr, "Compile Err #%d at line %d:\n\tnote: %s\n", self->errors, tk->line, msg);
 }
 
-size_t compiler_emit_op(Program *pg, Opcode op) {
-    AnyVec_Instruction *code_ref = &AnyVec_Chunk_getm(&pg->chunks, AnyVec_Chunk_len(&pg->chunks) - 1)->code;
+size_t compiler_emit_op(Compiler *self, Program *pg, Opcode op) {
+    AnyVec_Instruction *code_ref = &AnyVec_Chunk_getm(&pg->chunks, self->chunk_idx)->code;
     Instruction temp = {
         .op = op,
         .flag = 0,
@@ -170,8 +186,8 @@ size_t compiler_emit_op(Program *pg, Opcode op) {
     return AnyVec_Instruction_len(code_ref);
 }
 
-size_t compiler_emit_op_unflagged(Program *pg, Opcode op, int16_t wide) {
-    AnyVec_Instruction *code_ref = &AnyVec_Chunk_getm(&pg->chunks, AnyVec_Chunk_len(&pg->chunks) - 1)->code;
+size_t compiler_emit_op_unflagged(Compiler *self, Program *pg, Opcode op, int16_t wide) {
+    AnyVec_Instruction *code_ref = &AnyVec_Chunk_getm(&pg->chunks, self->chunk_idx)->code;
     Instruction temp = {
         .op = op,
         .flag = 0,
@@ -183,8 +199,8 @@ size_t compiler_emit_op_unflagged(Program *pg, Opcode op, int16_t wide) {
     return AnyVec_Instruction_len(code_ref);
 }
 
-size_t compiler_emit_op_flagged(Program *pg, Opcode op, uint8_t flags, int16_t wide) {
-    AnyVec_Instruction *code_ref = &AnyVec_Chunk_getm(&pg->chunks, AnyVec_Chunk_len(&pg->chunks) - 1)->code;
+size_t compiler_emit_op_flagged(Compiler *self, Program *pg, Opcode op, uint8_t flags, int16_t wide) {
+    AnyVec_Instruction *code_ref = &AnyVec_Chunk_getm(&pg->chunks, self->chunk_idx)->code;
     Instruction temp = {
         .op = op,
         .flag = flags,
@@ -245,7 +261,7 @@ const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const ch
     }
 
     // ? C++ equivalent: ... = m_chunks.back().constants;
-    AnyVec_Value *constants = &AnyVec_Chunk_getm(&pg->chunks, AnyVec_Chunk_len(&pg->chunks) - 1)->constants;
+    AnyVec_Value *constants = &AnyVec_Chunk_getm(&pg->chunks, self->chunk_idx)->constants;
     const int next_const_id = AnyVec_Value_len(constants);
 
     AnyVec_Value_push(constants, &v);
@@ -272,11 +288,11 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
 
     switch (curr_ref->tag) {
         case tk_none:
-            compiler_emit_op(pg, op_put_none);
+            compiler_emit_op(self, pg, op_put_none);
             compiler_eat_tk(self, lexer, s);
             return 1;
         case tk_true: case tk_false:
-            compiler_emit_op_flagged(pg, op_put_bool, curr_ref->tag == 1, 0);
+            compiler_emit_op_flagged(self, pg, op_put_bool, curr_ref->tag == 1, 0);
             compiler_eat_tk(self, lexer, s);
             return 1;
         case tk_integer:
@@ -309,14 +325,14 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
 
     switch (temp_locus->domain) {
         case symbol_constant:
-            compiler_emit_op_unflagged(pg, op_put_k, temp_locus->id);
+            compiler_emit_op_unflagged(self, pg, op_put_k, temp_locus->id);
             break;
         case symbol_local:
-            compiler_emit_op_unflagged(pg, op_load_local, temp_locus->id);
+            compiler_emit_op_unflagged(self, pg, op_load_local, temp_locus->id);
             break;
         case symbol_func:
         default:
-            compiler_emit_op_unflagged(pg, op_load_imm_gid, temp_locus->id);
+            compiler_emit_op_unflagged(self, pg, op_load_imm_gid, temp_locus->id);
             break;
     }
 
@@ -355,7 +371,7 @@ int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program
     }
 
     compiler_eat_tk(self, lexer, s);
-    compiler_emit_op_unflagged(pg, op_call, arg_count);
+    compiler_emit_op_unflagged(self, pg, op_call, arg_count);
 
     return 1;
 }
@@ -386,7 +402,7 @@ int8_t compiler_do_factor(Compiler *self, Lexer *lexer, const charspan *s, Progr
             fprintf(stderr, "Note: See factor RHS at line %d.\n", self->curr.line);
             return 0;
         }
-        compiler_emit_op(pg, op);
+        compiler_emit_op(self, pg, op);
     }
 
     return 1;
@@ -418,7 +434,7 @@ int8_t compiler_do_sum(Compiler *self, Lexer *lexer, const charspan *s, Program 
             fprintf(stderr, "Note: See sum RHS at line %d.\n", self->curr.line);
             return 0;
         }
-        compiler_emit_op(pg, op);
+        compiler_emit_op(self, pg, op);
     }
 
     return 1;
@@ -450,7 +466,7 @@ int8_t compiler_do_equality(Compiler *self, Lexer *lexer, const charspan *s, Pro
             fprintf(stderr, "Note: See equality RHS at line %d.\n", self->curr.line);
             return 0;
         }
-        compiler_emit_op(pg, op);
+        compiler_emit_op(self, pg, op);
     }
 
     return 1;
@@ -482,7 +498,7 @@ int8_t compiler_do_compare(Compiler *self, Lexer *lexer, const charspan *s, Prog
             fprintf(stderr, "Note: See compare RHS at line %d.\n", self->curr.line);
             return 0;
         }
-        compiler_emit_op(pg, op);
+        compiler_emit_op(self, pg, op);
     }
 
     return 1;
@@ -531,7 +547,49 @@ int8_t compiler_do_vars(Compiler *self, Lexer *lexer, const charspan *s, Program
     return 1;
 }
 
-// int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    compiler_eat_tk(self, lexer, s); // ? skip IF
+
+    const int cmp_line = self->curr.line;
+    if (!compiler_do_compare(self, lexer, s, pg)) {
+        fprintf(stderr, "Note: See if-statement at line %d.\n", cmp_line);
+        return 0;
+    }
+
+    const int16_t jump_else_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op_flagged(self, pg, op_jmp_false, 0, 0);
+    compiler_emit_op_flagged(self, pg, op_pop, 1, 0);
+
+    if (!compiler_do_block(self, lexer, s, pg)) {
+        fprintf(stderr, "Note: See in if-block at around line %d.\n", self->curr.line);
+        return 0;
+    }
+    
+    const int16_t jump_skip_else_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op_unflagged(self, pg, op_jmp, 0);
+
+    // * BEGIN ELSE clause ... * //
+
+    if (!compiler_match_curr(self, tk_keyword_else)) {
+        compiler_warn(self, "Expected 'else' in if-else-statement.", &self->curr, s);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s); // ? consume leading 'ELSE' of ELSE body
+
+    const int16_t begin_else_pos = jump_skip_else_pos + 1;
+    if (!compiler_do_block(self, lexer, s, pg)) {
+        fprintf(stderr, "Note: See in if-block at around line %d.\n", self->curr.line);
+        return 0;
+    }
+
+    const int16_t end_ifs_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op(self, pg, op_nop);
+    pg->chunks.data[self->chunk_idx].code.data[jump_else_pos].wide = begin_else_pos - jump_else_pos;
+    pg->chunks.data[self->chunk_idx].code.data[jump_skip_else_pos].wide = end_ifs_pos - jump_skip_else_pos;
+
+    return 1;
+}
+
 // int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 
 int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
@@ -541,7 +599,7 @@ int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program 
         fprintf(stderr, "Note: See return-result expression at line %d.\n", self->curr.line);
         return 0;
     }
-    compiler_emit_op(pg, op_ret);
+    compiler_emit_op(self, pg, op_ret);
 
     if (!compiler_match_curr(self, tk_semicolon)) {
         compiler_warn(self, "Expected ';' after return statement.", &self->curr, s);
@@ -567,7 +625,116 @@ int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Pr
     return 1;
 }
 
-// int8_t compiler_do_func(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_nestable_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    switch (self->curr.tag) {
+    case tk_keyword_let:
+        return compiler_do_vars(self, lexer, s, pg);
+    case tk_keyword_if:
+        return compiler_do_ifs(self, lexer, s, pg);
+    case tk_keyword_ret:
+        return compiler_do_ret(self, lexer, s, pg);
+    default:
+        return compiler_do_expr_stmt(self, lexer, s, pg);
+    }
+}
+
+int8_t compiler_do_block(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    if (!compiler_match_curr(self, tk_colon)) {
+        compiler_warn(self, "Expected ':' starting block.", &self->curr, s);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    while (!compiler_match_curr(self, tk_eof)) {
+        if (compiler_match_curr(self, tk_keyword_end)) {
+            break;
+        }
+
+        const int stmt_line = self->curr.line;
+        if (!compiler_do_nestable_stmt(self, lexer, s, pg)) {
+            fprintf(stderr, "Note: See nested statemnt in block body around line %d\n", stmt_line);
+            return 0;
+        }
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    return 1;
+}
+
+int8_t compiler_do_func(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    compiler_eat_tk(self, lexer, s); // ? skip FUN
+
+    if (!compiler_match_curr(self, tk_identifier)) {
+        compiler_warn(self, "Expected name for FUN declaration.", &self->curr, s);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    const charspan name_lexeme = {
+        .data = s->data + self->prev.begin,
+        .length = self->prev.length
+    };
+    Chunk temp_chunk;
+    Chunk_dud(&temp_chunk);
+    AnyVec_Chunk_push(&pg->chunks, &temp_chunk);
+
+    // ? Put index to this procedure's code chunk and reset it to 0 again once we return to top-level code... This works since there's only 1 global scope & 1 nested, local scope per procedure.
+    const int16_t old_chunk_idx = 0;
+    self->chunk_idx = pg->chunks.length - 1;
+    compiler_record_function(self, pg, &name_lexeme, self->chunk_idx);
+
+    if (!compiler_match_curr(self, tk_lparen)) {
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    while (!compiler_match_curr(self, tk_eof)) {
+        if (compiler_match_curr(self, tk_rparen)) {
+            break;
+        } else if (!compiler_match_curr(self, tk_identifier)) {
+            compiler_warn(self, "Expected name in params list here.", &self->curr, s);
+            return 0;
+        }
+        
+        // ? Eat checked identifier token here, as it's simpler to process it as self->curr.
+        const charspan param_name = {
+            .data = s->data + self->curr.begin,
+            .length = self->curr.length
+        };
+        compiler_record_local(self, pg, &param_name);
+        compiler_eat_tk(self, lexer, s);
+
+        if (compiler_match_curr(self, tk_comma)) {
+            compiler_eat_tk(self, lexer, s);
+        }
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    if (!compiler_do_block(self, lexer, s, pg)) {
+        fprintf(stderr, "Note: See in FUN declaration around line %d.\n", self->curr.line);
+        return 0;
+    } else {
+        symbol_table_clear(&self->locals);
+        self->chunk_idx = 0;
+    }
+
+    return 1;
+}
+
+int8_t compiler_do_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    switch (self->curr.tag) {
+    case tk_keyword_let:
+        return compiler_do_vars(self, lexer, s, pg);
+    case tk_keyword_if:
+        return compiler_do_ifs(self, lexer, s, pg);
+    case tk_keyword_ret:
+        return compiler_do_ret(self, lexer, s, pg);
+    case tk_keyword_fun:
+        return compiler_do_func(self, lexer, s, pg);
+    default:
+        return compiler_do_expr_stmt(self, lexer, s, pg);
+    }
+}
 
 int8_t compiler_do_source(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
     compiler_eat_tk(self, lexer, s); // ? remove the unknown token placeholder by getting the 1st token into self->curr... this is needed for correct parsing --> bytecode
@@ -578,21 +745,7 @@ int8_t compiler_do_source(Compiler *self, Lexer *lexer, const charspan *s, Progr
     AnyVec_Chunk_push(&pg->chunks, &temp); // ? copy the empty chunk into this Vec, but don't touch temp again... just did scuffed destructive moves??
 
     while (!compiler_match_curr(self, tk_eof)) {
-        int8_t emission_ok = 0;
-
-        switch (self->curr.tag) {
-            case tk_keyword_let:
-                emission_ok = compiler_do_vars(self, lexer, s, pg);
-                break;
-            case tk_keyword_ret:
-                emission_ok = compiler_do_ret(self, lexer, s, pg);
-                break;
-            default:
-                emission_ok = compiler_do_expr_stmt(self, lexer, s, pg);
-                break;
-        }
-
-        if (!emission_ok) {
+        if (!compiler_do_stmt(self, lexer, s, pg)) {
             // ? Recover parsing by skipping to a LET declaration as a synchronization point.
             while (!compiler_match_curr(self, tk_eof)) {
                 if (compiler_match_curr(self, tk_keyword_let)) {
@@ -603,6 +756,9 @@ int8_t compiler_do_source(Compiler *self, Lexer *lexer, const charspan *s, Progr
             }
         }
     }
+
+    compiler_emit_op(self, pg, op_ret); // ! NOTE: emit a redundant RET in case the user forgets one- otherwise the VM reads an invalid IP!
+    pg->entry_id = 0;
 
     fprintf(stderr, "Compilation finished with \x1b[1;31m%d\x1b[0m errors.\n\n", self->errors);
 

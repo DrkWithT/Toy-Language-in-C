@@ -35,6 +35,7 @@ typedef struct symbol_table_t {
 
 SymbolTable make_symbol_table();
 void symbol_table_del(SymbolTable *self);
+void symbol_table_clear(SymbolTable *self);
 const SymbolInfo *symbol_table_find(const SymbolTable *symbols, const charspan *s);
 const SymbolInfo *symbol_table_push(SymbolTable *symbols, const SymbolInfo *info);
 
@@ -44,6 +45,7 @@ typedef struct compiler_t {
     Token prev;
     Token curr;
     int errors;
+    int16_t chunk_idx;  // ? 0 indexes top level code, 1+ indexes a code chunk per procedure, applying only for compiling a FUN decl.
 } Compiler;
 
 Compiler make_compiler();
@@ -55,9 +57,9 @@ Token compiler_advance_tk(Compiler *self, Lexer *lexer, const charspan *s);
 void compiler_eat_tk(Compiler *self, Lexer *lexer, const charspan *s);
 void compiler_warn(Compiler *self, const char *msg, const Token *tk, const charspan *s);
 
-size_t compiler_emit_op(Program *pg, Opcode op);
-size_t compiler_emit_op_unflagged(Program *pg, Opcode op, int16_t wide);
-size_t compiler_emit_op_flagged(Program *pg, Opcode op, uint8_t flags, int16_t wide);
+size_t compiler_emit_op(Compiler *self, Program *pg, Opcode op);
+size_t compiler_emit_op_unflagged(Compiler *self, Program *pg, Opcode op, int16_t wide);
+size_t compiler_emit_op_flagged(Compiler *self, Program *pg, Opcode op, uint8_t flags, int16_t wide);
 
 const SymbolInfo *compiler_resolve_name(const Compiler *self, const charspan *s);
 const SymbolInfo *compiler_record_function(Compiler *self, Program *pg, const charspan *s, int chunk_id);
@@ -72,11 +74,14 @@ int8_t compiler_do_equality(Compiler *self, Lexer *lexer, const charspan *s, Pro
 int8_t compiler_do_compare(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 
 int8_t compiler_do_vars(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
-// int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 // int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 // int8_t compiler_do_func(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_nestable_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_block(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 
 int8_t compiler_do_source(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 
