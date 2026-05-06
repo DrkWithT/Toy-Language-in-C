@@ -1,9 +1,18 @@
 #include <stdio.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "mystr.h"
 #include "bytecode.h"
 #include "compiler.h"
+#include "vm.h"
+
+
+
+#define VM_STACK_MAX 1024
+#define VM_DEPTH_MAX 64
+
+
 
 static const char *project_name = "_____         _____         _     _   \n"
 "|_   _|___ _ _|   __|___ ___|_|___| |_ \n"
@@ -21,6 +30,7 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "WHILE", .tag = tk_keyword_while},
     (LexItem) {.literal = "RET", .tag = tk_keyword_ret},
     (LexItem) {.literal = "FUN", .tag = tk_keyword_fun},
+    (LexItem) {.literal = "END", .tag = tk_keyword_end},
     (LexItem) {.literal = "*", .tag = tk_os_times},
     (LexItem) {.literal = "/", .tag = tk_os_slash},
     (LexItem) {.literal = "+", .tag = tk_os_plus},
@@ -30,6 +40,7 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "<", .tag = tk_os_lesser},
     (LexItem) {.literal = ">", .tag = tk_os_greater}
 };
+
 
 
 mystr read_file(const char *fname) {
@@ -47,6 +58,7 @@ mystr read_file(const char *fname) {
     mystr source;
     mystr_res(&source, 64);
 
+    size_t total_rc = 0;
     size_t rc = 0;
 
     while (1) {
@@ -55,6 +67,8 @@ mystr read_file(const char *fname) {
         if (rc == 0) {
             break;
         }
+
+        total_rc += rc;
 
         chunk[rc] = '\0';
         mystr_append_raw(&source, chunk, rc);
@@ -67,11 +81,15 @@ mystr read_file(const char *fname) {
             .capacity = 0,
             .length = 0
         };
+    } else if (total_rc == 0) {
+        mystr_del(&source);
     }
 
     fclose(fs);
     return source;
 }
+
+
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -87,8 +105,10 @@ int main(int argc, char *argv[]) {
 
     mystr source_str = read_file(argv[1]);
 
-    puts("Read source is:\n");
-    puts(mystr_raw(&source_str));
+    if (mystr_empty(&source_str)) {
+        fprintf(stderr, "Read Error: The file at \x1b[1;29m%s\x1b[0m could not be read.", argv[1]);
+        return 1;
+    }
 
     charspan source_view;
     charspan_new(&source_view, mystr_raw(&source_str), mystr_len(&source_str));
@@ -106,9 +126,23 @@ int main(int argc, char *argv[]) {
  
     dump_program(&program);
 
+    VMState vm = make_vm(&program, VM_STACK_MAX, VM_DEPTH_MAX);
+
+    struct timeval begin, end;
+    gettimeofday(&begin, NULL);
+    const VMStatus status = vm_run(&vm);
+    gettimeofday(&end, NULL);
+
+    const Value ans = vm_result(&vm);
+
+    puts("Result:");
+    print_value(&ans);
+    printf("\nDONE in %d ms\n", (end.tv_usec - begin.tv_usec) / 1000);
+
     program_del(&program);
     compiler_del(&compiler);
     charspan_del(&source_view);
     mystr_del(&source_str);
-    return 0;
+
+    return (status == vm_status_ok) ? 0 : 1;
 }
