@@ -32,9 +32,9 @@ typedef enum token_tag_t {
     tk_os_and,
     tk_os_or,
     tk_os_bind_equals,  // ? `:=` is for mutating a variable
-    tk_os_times_equals, // ? `+=`
+    tk_os_times_equals,
     tk_os_slash_equals,
-    tk_os_plus_equals,
+    tk_os_plus_equals,  // ? `+=`
     tk_os_minus_equals,
     tk_comma,
     tk_colon,
@@ -63,7 +63,7 @@ static inline int8_t is_op_symbol(char c) {
     switch (c) {
         case '*': case '/': case '+': case '-': // arithmetic
         case '=': case '!': case '<': case '>': // comparison / logical
-        case '?': return 1; // extra
+        case '|': case '&': return 1; // extra
         default: return 0;
     }
 }
