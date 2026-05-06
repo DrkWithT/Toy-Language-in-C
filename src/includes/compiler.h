@@ -72,13 +72,15 @@ int8_t compiler_do_factor(Compiler *self, Lexer *lexer, const charspan *s, Progr
 int8_t compiler_do_sum(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_equality(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_compare(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_and(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_or(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 
 int8_t compiler_do_vars(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 // int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
-// int8_t compiler_do_func(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_func(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_nestable_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_block(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);

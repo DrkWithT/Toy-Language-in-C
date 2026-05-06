@@ -313,6 +313,18 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
             );
             compiler_eat_tk(self, lexer, s);
             break;
+        case tk_lparen:
+            compiler_eat_tk(self, lexer, s);
+            if (!compiler_do_or(self, lexer, s, pg)) {
+                fprintf(stderr, "Note: See parenthesized expr at around line %d.\n", self->prev.line);
+                return 0;
+            }
+            if (!compiler_match_curr(self, tk_rparen)) {
+                compiler_warn(self, "Expected ')' closing parenthesized expr.", &self->curr, s);
+                return 0;
+            }
+            compiler_eat_tk(self, lexer, s);
+            return 1;
         default:
             compiler_warn(self, "Unexpected token in literal, expected none, true, false, or a name.", curr_ref, s);
             return 0;
@@ -504,15 +516,69 @@ int8_t compiler_do_compare(Compiler *self, Lexer *lexer, const charspan *s, Prog
     return 1;
 }
 
+int8_t compiler_do_and(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    if (!compiler_do_compare(self, lexer, s, pg)) {
+        fprintf(stderr, "Note: See and-expression LHS at line %d.\n", self->curr.line);
+        return 0;
+    }
+
+    if (!compiler_match_curr(self, tk_os_and)) {
+        return 1;
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    const int16_t falsy_jmp_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op_flagged(self, pg, op_jmp_false, 0, 0);
+    compiler_emit_op_flagged(self, pg, op_pop, 1, 0); // ? Pop LHS if true, keeping our VM's "single result value" invariant.
+
+    if (!compiler_do_compare(self, lexer, s, pg)) {
+        fprintf(stderr, "Note: See and-expression RHS at line %d.\n", self->curr.line);
+        return 0;
+    }
+
+    const int16_t falsy_jmp_end = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op(self, pg, op_nop);
+
+    pg->chunks.data[self->chunk_idx].code.data[falsy_jmp_pos].wide = falsy_jmp_end - falsy_jmp_pos;
+
+    return 1;
+}
+
+int8_t compiler_do_or(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    if (!compiler_do_and(self, lexer, s, pg)) {
+        fprintf(stderr, "Note: See or-expression LHS at line %d.\n", self->curr.line);
+        return 0;
+    }
+
+    if (!compiler_match_curr(self, tk_os_or)) {
+        return 1;
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    const int16_t truthy_jmp_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op_flagged(self, pg, op_jmp_if, 0, 0);
+    compiler_emit_op_flagged(self, pg, op_pop, 1, 0); // ? Pop LHS if true, keeping our VM's "single result value" invariant.
+
+    if (!compiler_do_and(self, lexer, s, pg)) {
+        fprintf(stderr, "Note: See or-expression RHS at line %d.\n", self->curr.line);
+        return 0;
+    }
+
+    const int16_t truthy_jmp_end = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op(self, pg, op_nop);
+
+    pg->chunks.data[self->chunk_idx].code.data[truthy_jmp_pos].wide = truthy_jmp_end - truthy_jmp_pos;
+
+    return 1;
+}
+
 int8_t compiler_do_vars(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
     compiler_eat_tk(self, lexer, s); // ? skip LET
 
     while (!compiler_match_curr(self, tk_eof)) {
         if (compiler_match_curr(self, tk_semicolon)) {
             break;
-        }
-
-        if (!compiler_match_curr(self, tk_identifier)) {
+        } else if (!compiler_match_curr(self, tk_identifier)) {
             compiler_warn(self, "Expected name in variable declaration here.", &self->curr, s);
             return 0;
         }
@@ -533,7 +599,7 @@ int8_t compiler_do_vars(Compiler *self, Lexer *lexer, const charspan *s, Program
         }
         compiler_eat_tk(self, lexer, s);
 
-        if (!compiler_do_compare(self, lexer, s, pg)) {
+        if (!compiler_do_or(self, lexer, s, pg)) {
             return 0;
         }
 
@@ -551,7 +617,7 @@ int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program 
     compiler_eat_tk(self, lexer, s); // ? skip IF
 
     const int cmp_line = self->curr.line;
-    if (!compiler_do_compare(self, lexer, s, pg)) {
+    if (!compiler_do_or(self, lexer, s, pg)) {
         fprintf(stderr, "Note: See if-statement at line %d.\n", cmp_line);
         return 0;
     }
@@ -595,7 +661,7 @@ int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program 
 int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
     compiler_eat_tk(self, lexer, s); // ? skip RET
 
-    if (!compiler_do_compare(self, lexer, s, pg)) {
+    if (!compiler_do_or(self, lexer, s, pg)) {
         fprintf(stderr, "Note: See return-result expression at line %d.\n", self->curr.line);
         return 0;
     }
@@ -611,7 +677,7 @@ int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program 
 }
 
 int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
-    if (!compiler_do_compare(self, lexer, s, pg)) {
+    if (!compiler_do_or(self, lexer, s, pg)) {
         fprintf(stderr, "See expr-stmt at line %d.\n", self->curr.line);
         return 0;
     }

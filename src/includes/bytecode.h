@@ -50,6 +50,7 @@ typedef enum vm_opcode_t : uint8_t {
     op_gt,
     op_jmp,
     op_jmp_false,
+    op_jmp_if,
     op_call,
     op_put_callee,
     op_ret
