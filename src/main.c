@@ -5,6 +5,12 @@
 #include "bytecode.h"
 #include "compiler.h"
 
+static const char *project_name = "_____         _____         _     _   \n"
+"|_   _|___ _ _|   __|___ ___|_|___| |_ \n"
+"  | | | . | | |__   |  _|  _| | . |  _|\n"
+"  |_| |___|_  |_____|___|_| |_|  _|_|  \n"
+"          |___|               |_|      \n";
+
 static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "NIL", .tag = tk_none},
     (LexItem) {.literal = "TRUE", .tag = tk_true},
@@ -71,6 +77,12 @@ int main(int argc, char *argv[]) {
     if (argc != 2) {
         fprintf(stderr, "usage: ./toyscript [-h | -v | <file name>]\n-h: help\n-v: show version\n");
         return 1;
+    } else if (!strcmp(argv[1], "-h")) {
+        puts("usage: ./toyscript [-h | -v | <file name>]\n-h: help\n-v: show version\n");
+        return 0;
+    } else if (!strcmp(argv[1], "-v")) {
+        printf("\x1b[1;33m%s\x1b[0m\n\nv0.0.1\t By: DrkWithT (GitHub)", project_name);
+        return 0;
     }
 
     mystr source_str = read_file(argv[1]);
@@ -91,6 +103,8 @@ int main(int argc, char *argv[]) {
         perror("Please check all compile errors above.");
         return 1;
     }
+ 
+    dump_program(&program);
 
     program_del(&program);
     compiler_del(&compiler);

@@ -154,7 +154,7 @@ void compiler_eat_tk(Compiler *self, Lexer *lexer, const charspan *s) {
 
 void compiler_warn(Compiler *self, const char *msg, const Token *tk, const charspan *s) {
     self->errors++;
-    fprintf(stderr, "Compile Err %dat line %d:\n\tnote: %s", self->errors, tk->line, msg);
+    fprintf(stderr, "Compile Err #%d at line %d:\n\tnote: %s\n", self->errors, tk->line, msg);
 }
 
 size_t compiler_emit_op(Program *pg, Opcode op) {
@@ -253,7 +253,7 @@ const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const ch
     SymbolInfo new_info = {
         .name = *s_symbol,
         .id = next_const_id,
-        .domain = symbol_local
+        .domain = symbol_constant
     };
 
     return symbol_table_push(&self->locals, &new_info);
@@ -333,8 +333,7 @@ int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program
     }
 
     if (!compiler_match_curr(self, tk_lparen)) {
-        compiler_warn(self, "Unexpected token starting call args, expected '('.", &callee_name, s);
-        return 0;
+        return 1;
     }
     compiler_eat_tk(self, lexer, s);
 
@@ -529,7 +528,7 @@ int8_t compiler_do_vars(Compiler *self, Lexer *lexer, const charspan *s, Program
 
     compiler_eat_tk(self, lexer, s);
 
-    return 0;
+    return 1;
 }
 
 // int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
@@ -565,12 +564,19 @@ int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Pr
     }
     compiler_eat_tk(self, lexer, s);
 
-    return 0;
+    return 1;
 }
 
 // int8_t compiler_do_func(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 
 int8_t compiler_do_source(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    compiler_eat_tk(self, lexer, s); // ? remove the unknown token placeholder by getting the 1st token into self->curr... this is needed for correct parsing --> bytecode
+
+    // ! IMPORTANT: push an empty bytecode chunk so that an OOB terminate doesn't happen when Line 248 tries to push a constant, etc. for AnyVec_<type>.
+    Chunk temp;
+    Chunk_new(&temp); // ? initialize empty chunk
+    AnyVec_Chunk_push(&pg->chunks, &temp); // ? copy the empty chunk into this Vec, but don't touch temp again... just did scuffed destructive moves??
+
     while (!compiler_match_curr(self, tk_eof)) {
         int8_t emission_ok = 0;
 
@@ -598,7 +604,7 @@ int8_t compiler_do_source(Compiler *self, Lexer *lexer, const charspan *s, Progr
         }
     }
 
-    fprintf(stderr, "Compilation finished with \x1b[1;31m%d\x1b[0m errors.", self->errors);
+    fprintf(stderr, "Compilation finished with \x1b[1;31m%d\x1b[0m errors.\n\n", self->errors);
 
     return self->errors == 0;
 }

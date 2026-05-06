@@ -1,5 +1,3 @@
-LET a: 1;
-LET b: 2;
-LET c: 3;
+LET a : 1, b : 1;
 
-RET a + b + c;
+RET a + b;
