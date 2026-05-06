@@ -18,6 +18,7 @@ target_sources(toyscript_impl PRIVATE
     "${PROJECT_SOURCES}/value.c"
     "${PROJECT_SOURCES}/bytecode.c"
     "${PROJECT_SOURCES}/compiler.c"
+    "${PROJECT_SOURCES}/vm.c"
 )
 
 add_executable(toyscript)

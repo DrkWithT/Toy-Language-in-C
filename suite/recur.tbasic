@@ -1,0 +1,13 @@
+#
+    test recursion of fib 30
+#
+
+FUN fib(n):
+    IF n < 2:
+        RET n;
+    END ELSE:
+        RET fib(n - 1) + fib(n - 2);
+    END
+END
+
+RET fib(30);
