@@ -13,6 +13,7 @@ typedef enum token_tag_t {
     tk_keyword_while,
     tk_keyword_ret,
     tk_keyword_fun,
+    tk_keyword_end,
     tk_identifier,
     tk_none,
     tk_true,

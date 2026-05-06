@@ -9,6 +9,7 @@ static const char *opcode_names[] = {
     "op_store_local",
     "op_put_konst",
     "op_dup",
+    "op_pop",
     "op_mul",
     "op_div",
     "op_add",
@@ -76,21 +77,21 @@ void dump_program(const Program *pg) {
         printf("CHUNK %zu:\n", chunk_pos);
 
         const Chunk *temp_chunk = AnyVec_Chunk_get(&pg->chunks, chunk_pos);
-        const size_t temp_chunk_const_n = AnyVec_Value_len(&pg->chunks.data->constants);
-        const size_t temp_chunk_code_n = AnyVec_Instruction_len(&pg->chunks.data->code);
+        const size_t temp_chunk_const_n = AnyVec_Value_len(&temp_chunk->constants);
+        const size_t temp_chunk_code_n = AnyVec_Instruction_len(&temp_chunk->code);
 
         puts("CONSTANTS:\n");
 
         for (size_t temp_chunk_const_id = 0; temp_chunk_const_id < temp_chunk_const_n; temp_chunk_const_id++) {
             printf("\tconst%zu = ", temp_chunk_const_id);
-            print_value(AnyVec_Value_get(&pg->chunks.data->constants, temp_chunk_const_id));
+            print_value(AnyVec_Value_get(&temp_chunk->constants, temp_chunk_const_id));
             printf("\n");
         }
 
         puts("\nCODE:\n");
 
         for (size_t temp_chunk_code_id = 0; temp_chunk_code_id < temp_chunk_code_n; temp_chunk_code_id++) {
-            const Instruction *ins = AnyVec_Instruction_get(&pg->chunks.data->code, temp_chunk_code_id);
+            const Instruction *ins = AnyVec_Instruction_get(&temp_chunk->code, temp_chunk_code_id);
             printf("\t%zu: %s   %d, %d\n", temp_chunk_code_id, opcode_names[ins->op], ins->flag, ins->wide);
         }
 

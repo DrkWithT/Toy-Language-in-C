@@ -126,6 +126,7 @@ void mystr_del(mystr *self) {
     if (self->data != NULL) {
         free(self->data);
         self->data = NULL;
+        self->capacity = 0;
     }
 }
 
