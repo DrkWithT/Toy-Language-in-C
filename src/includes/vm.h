@@ -41,6 +41,7 @@ VMStatus fn_lt(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_gt(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_jmp(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_jmp_false(VMState *, const Instruction *, const Value *, Value *);
+VMStatus fn_jmp_if(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_call(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_put_callee(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_ret(VMState *, const Instruction *, const Value *, Value *);

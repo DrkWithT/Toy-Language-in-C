@@ -9,6 +9,7 @@ static const OpFunc opcode_handlers[] = {
     fn_put_bool,
     fn_load_imm_gid,
     fn_load_local,
+    // fn_ref_local,
     fn_store_local,
     fn_put_k,
     fn_dup,
@@ -23,6 +24,7 @@ static const OpFunc opcode_handlers[] = {
     fn_gt,
     fn_jmp,
     fn_jmp_false,
+    fn_jmp_if,
     fn_call,
     fn_put_callee,
     fn_ret
@@ -223,7 +225,7 @@ VMStatus fn_eq(VMState *s, const Instruction *ip, const Value *cvp, Value *stack
     const Value *rhs = stack + s->sp;
 
     if (lhs->tag != rhs->tag) {
-        *lhs = make_value_real(NAN);
+        *lhs = make_value_bool(0);
     } else {
         switch (lhs->tag) {
         case vtag_nil:
@@ -233,13 +235,13 @@ VMStatus fn_eq(VMState *s, const Instruction *ip, const Value *cvp, Value *stack
             *lhs = make_value_bool(lhs->data.byte == rhs->data.byte);
             break;
         case vtag_int:
-            *lhs = make_value_int(lhs->data.i == rhs->data.i);
+            *lhs = make_value_bool(lhs->data.i == rhs->data.i);
             break;
         case vtag_real:
-            *lhs = make_value_real(lhs->data.f == rhs->data.f);
+            *lhs = make_value_bool(lhs->data.f == rhs->data.f);
             break;
         default:
-            *lhs = make_value_real(NAN);
+            *lhs = make_value_bool(0);
             break;
         }
     }
@@ -256,7 +258,7 @@ VMStatus fn_ne(VMState *s, const Instruction *ip, const Value *cvp, Value *stack
     const Value *rhs = stack + s->sp;
 
     if (lhs->tag != rhs->tag) {
-        *lhs = make_value_real(NAN);
+        *lhs = make_value_bool(0);
     } else {
         switch (lhs->tag) {
         case vtag_nil:
@@ -266,13 +268,13 @@ VMStatus fn_ne(VMState *s, const Instruction *ip, const Value *cvp, Value *stack
             *lhs = make_value_bool(lhs->data.byte != rhs->data.byte);
             break;
         case vtag_int:
-            *lhs = make_value_int(lhs->data.i != rhs->data.i);
+            *lhs = make_value_bool(lhs->data.i != rhs->data.i);
             break;
         case vtag_real:
-            *lhs = make_value_real(lhs->data.f != rhs->data.f);
+            *lhs = make_value_bool(lhs->data.f != rhs->data.f);
             break;
         default:
-            *lhs = make_value_real(NAN);
+            *lhs = make_value_bool(0);
             break;
         }
     }
@@ -289,7 +291,7 @@ VMStatus fn_lt(VMState *s, const Instruction *ip, const Value *cvp, Value *stack
     const Value *rhs = stack + s->sp;
 
     if (lhs->tag != rhs->tag) {
-        *lhs = make_value_real(NAN);
+        *lhs = make_value_bool(0);
     } else {
         switch (lhs->tag) {
         case vtag_nil:
@@ -299,13 +301,13 @@ VMStatus fn_lt(VMState *s, const Instruction *ip, const Value *cvp, Value *stack
             *lhs = make_value_bool(lhs->data.byte < rhs->data.byte);
             break;
         case vtag_int:
-            *lhs = make_value_int(lhs->data.i < rhs->data.i);
+            *lhs = make_value_bool(lhs->data.i < rhs->data.i);
             break;
         case vtag_real:
-            *lhs = make_value_real(lhs->data.f < rhs->data.f);
+            *lhs = make_value_bool(lhs->data.f < rhs->data.f);
             break;
         default:
-            *lhs = make_value_real(NAN);
+            *lhs = make_value_bool(0);
             break;
         }
     }
@@ -322,7 +324,7 @@ VMStatus fn_gt(VMState *s, const Instruction *ip, const Value *cvp, Value *stack
     const Value *rhs = stack + s->sp;
 
     if (lhs->tag != rhs->tag) {
-        *lhs = make_value_real(NAN);
+        *lhs = make_value_bool(0);
     } else {
         switch (lhs->tag) {
         case vtag_nil:
@@ -332,13 +334,13 @@ VMStatus fn_gt(VMState *s, const Instruction *ip, const Value *cvp, Value *stack
             *lhs = make_value_bool(lhs->data.byte > rhs->data.byte);
             break;
         case vtag_int:
-            *lhs = make_value_int(lhs->data.i > rhs->data.i);
+            *lhs = make_value_bool(lhs->data.i > rhs->data.i);
             break;
         case vtag_real:
-            *lhs = make_value_real(lhs->data.f > rhs->data.f);
+            *lhs = make_value_bool(lhs->data.f > rhs->data.f);
             break;
         default:
-            *lhs = make_value_real(NAN);
+            *lhs = make_value_bool(0);
             break;
         }
     }
@@ -372,6 +374,32 @@ VMStatus fn_jmp_false(VMState *s, const Instruction *ip, const Value *cvp, Value
         break;
     case vtag_real:
         ip += (temp->data.f == 0.0f) ? ip->wide : 1;
+        break;
+    default:
+        s->sp--;
+        ip++;
+        break;
+    }
+
+    TAILCALL
+    return vm_dispatch(s, ip, cvp, stack);
+}
+
+VMStatus fn_jmp_if(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
+    const Value *temp = stack + s->sp;
+
+    switch (temp->tag) {
+    case vtag_nil:
+        ip++;
+        break;
+    case vtag_bool:
+        ip += (temp->data.byte != 0) ? ip->wide : 1;
+        break;
+    case vtag_int:
+        ip += (temp->data.i != 0) ? ip->wide : 1;
+        break;
+    case vtag_real:
+        ip += (temp->data.f != 0.0f) ? ip->wide : 1;
         break;
     default:
         s->sp--;

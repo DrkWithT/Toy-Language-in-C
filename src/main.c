@@ -14,7 +14,7 @@
 
 
 
-static const char *project_name = "_____         _____         _     _   \n"
+static const char *project_name = " _____         _____         _     _  \n"
 "|_   _|___ _ _|   __|___ ___|_|___| |_ \n"
 "  | | | . | | |__   |  _|  _| | . |  _|\n"
 "  |_| |___|_  |_____|___|_| |_|  _|_|  \n"
@@ -38,7 +38,14 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "==", .tag = tk_os_equals},
     (LexItem) {.literal = "!=", .tag = tk_os_bang_equals},
     (LexItem) {.literal = "<", .tag = tk_os_lesser},
-    (LexItem) {.literal = ">", .tag = tk_os_greater}
+    (LexItem) {.literal = ">", .tag = tk_os_greater},
+    (LexItem) {.literal = "&&", .tag = tk_os_and},
+    (LexItem) {.literal = "||", .tag = tk_os_or},
+    (LexItem) {.literal = ":=", .tag = tk_os_bind_equals},
+    (LexItem) {.literal = "*=", .tag = tk_os_times_equals},
+    (LexItem) {.literal = "/=", .tag = tk_os_slash_equals},
+    (LexItem) {.literal = "+=", .tag = tk_os_plus_equals},
+    (LexItem) {.literal = "-=", .tag = tk_os_minus_equals}
 };
 
 
@@ -92,21 +99,37 @@ mystr read_file(const char *fname) {
 
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "usage: ./toyscript [-h | -v | <file name>]\n-h: help\n-v: show version\n");
+    const char *source_fname = NULL;
+    int8_t show_version = 0;
+    int8_t show_help = 0;
+    int8_t dump_bc = 0;
+    int8_t allow_run = 0;
+
+    if (argc < 2) {
+        fprintf(stderr, "usage: ./toyscript [-h | -v | [-d | -r] <file name>]\n-h: help\n-v: show version\n");
         return 1;
-    } else if (!strcmp(argv[1], "-h")) {
-        puts("usage: ./toyscript [-h | -v | <file name>]\n-h: help\n-v: show version\n");
-        return 0;
-    } else if (!strcmp(argv[1], "-v")) {
+    }
+
+    for (int16_t arg_i = 0; arg_i < argc - 1; arg_i++) {
+        if (!strcmp(argv[1 + arg_i], "-v")) { show_version = 1;}
+        else if (!strcmp(argv[1 + arg_i], "-h")) { show_help = 1; }
+        else if (!strcmp(argv[1 + arg_i], "-d")) { dump_bc = 1; }
+        else if (!strcmp(argv[1 + arg_i], "-r")) { allow_run = 1; }
+        else { source_fname = argv[1 + arg_i]; }
+    }
+
+    if (show_version) {
         printf("\x1b[1;33m%s\x1b[0m\n\nv0.0.1\t By: DrkWithT (GitHub)", project_name);
+        return 0;
+    } else if (show_help) {
+        printf("usage: ./toyscript [-h | -v | [-d | -r] <file name>]\n-h: help\n-v: show version\n");
         return 0;
     }
 
-    mystr source_str = read_file(argv[1]);
+    mystr source_str = (source_fname != NULL) ? read_file(source_fname) : (mystr) {.data = NULL, .length = 0, .capacity = 0};
 
     if (mystr_empty(&source_str)) {
-        fprintf(stderr, "Read Error: The file at \x1b[1;29m%s\x1b[0m could not be read.", argv[1]);
+        fprintf(stderr, "Read Error: The file at \x1b[1;29m%s\x1b[0m could not be read.", source_fname);
         return 1;
     }
 
@@ -123,8 +146,14 @@ int main(int argc, char *argv[]) {
         perror("Please check all compile errors above.");
         return 1;
     }
- 
-    dump_program(&program);
+    
+    if (dump_bc) {
+        dump_program(&program);
+    }
+
+    if (!allow_run) {
+        return 0;
+    }
 
     VMState vm = make_vm(&program, VM_STACK_MAX, VM_DEPTH_MAX);
 
