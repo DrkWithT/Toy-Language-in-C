@@ -42,6 +42,7 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "&&", .tag = tk_os_and},
     (LexItem) {.literal = "||", .tag = tk_os_or},
     (LexItem) {.literal = ":=", .tag = tk_os_bind_equals},
+    (LexItem) {.literal = ":", .tag = tk_colon},
     (LexItem) {.literal = "*=", .tag = tk_os_times_equals},
     (LexItem) {.literal = "/=", .tag = tk_os_slash_equals},
     (LexItem) {.literal = "+=", .tag = tk_os_plus_equals},
@@ -82,7 +83,7 @@ mystr read_file(const char *fname) {
     }
 
     if (ferror(fs)) {
-        perror("File read failed.");
+        fprintf(stderr, "File read failed.\n");
         return (mystr) {
             .data = NULL,
             .capacity = 0,
@@ -143,7 +144,7 @@ int main(int argc, char *argv[]) {
     program_dud(&program);
 
     if (!compiler_do_source(&compiler, &tokenizer, &source_view, &program)) {
-        perror("Please check all compile errors above.");
+        fprintf(stderr, "Please check all compile errors above.\n");
         return 1;
     }
     

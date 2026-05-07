@@ -62,8 +62,8 @@ static inline int8_t is_numeric_symbol(char c) {
 static inline int8_t is_op_symbol(char c) {
     switch (c) {
         case '*': case '/': case '+': case '-': // arithmetic
-        case '=': case '!': case '<': case '>': // comparison / logical
-        case '|': case '&': return 1; // extra
+        case '=': case '!': case '<': case '>': case '|': case '&': // comparisons / logicals
+        case '.': case ':': return 1; // extra
         default: return 0;
     }
 }

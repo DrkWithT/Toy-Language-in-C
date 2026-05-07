@@ -96,7 +96,11 @@ Token lexer_lex_numeric(Lexer *self, const charspan *s) {
         const char c = s->data[self->pos];
 
         if (is_numeric_symbol(c)) {
-            if (c == '.') points++;
+            if (points >= 1 && c == '.') {
+                break;
+            } else if (c == '.') {
+                points++;
+            }
 
             lexer_consume(self, c);
         } else {
@@ -111,7 +115,7 @@ Token lexer_lex_numeric(Lexer *self, const charspan *s) {
     } else if (points == 1) {
         temp_tag = tk_real;
     } else {
-        temp_tag = tk_unknown;
+        temp_tag = tk_real;
     }
 
     return (Token) {
@@ -204,7 +208,6 @@ Token lexer_next(Lexer *self, const charspan *s) {
 
     switch (c) {
         case ',': return lexer_lex_single(self, tk_comma, s);
-        case ':': return lexer_lex_single(self, tk_colon, s);
         case ';': return lexer_lex_single(self, tk_semicolon, s);
         case '(': return lexer_lex_single(self, tk_lparen, s);
         case ')': return lexer_lex_single(self, tk_rparen, s);

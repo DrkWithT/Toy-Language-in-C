@@ -129,7 +129,9 @@ Compiler make_compiler() {
             .tag = tk_unknown
         },
         .errors = 0,
-        .chunk_idx = 0
+        .chunk_idx = 0,
+        .saved_local_id = 0,
+        .flags = cgen_no_flags
     };
 }
 
@@ -171,6 +173,23 @@ void compiler_eat_tk(Compiler *self, Lexer *lexer, const charspan *s) {
 void compiler_warn(Compiler *self, const char *msg, const Token *tk, const charspan *s) {
     self->errors++;
     fprintf(stderr, "Compile Err #%d at line %d:\n\tnote: %s\n", self->errors, tk->line, msg);
+}
+
+void compiler_flag_on(Compiler *self, CodegenFlag flag) {
+    self->flags |= flag;
+}
+
+void compiler_flag_off(Compiler *self, CodegenFlag flag) {
+    self->flags &= ~(uint8_t)flag;
+}
+
+int8_t compiler_flag_of(const Compiler *self, CodegenFlag flag) {
+    switch (flag) {
+    case cgen_assign_to: return (self->flags & flag);
+    case cgen_access_of: return (self->flags & flag) >> 1;
+    case cgen_lhs_local: return (self->flags & flag) >> 2;
+    default: return 0;
+    }
 }
 
 size_t compiler_emit_op(Compiler *self, Program *pg, Opcode op) {
@@ -333,6 +352,13 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
     if (temp_locus == NULL) {
         compiler_warn(self, "Undeclared name found here.", &self->prev, s);
         return 0;
+    }
+
+    // todo: add case for assignment LHS's of table accesses...
+    if (compiler_flag_of(self, cgen_assign_to) && temp_locus->domain == symbol_local) {
+        compiler_flag_on(self, cgen_lhs_local);
+        self->saved_local_id = temp_locus->id;
+        return 1;
     }
 
     switch (temp_locus->domain) {
@@ -677,9 +703,30 @@ int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program 
 }
 
 int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    // ? Process / emit LHS first...
+    compiler_flag_on(self, cgen_assign_to);
     if (!compiler_do_or(self, lexer, s, pg)) {
+        compiler_flag_off(self, cgen_assign_to);
         fprintf(stderr, "See expr-stmt at line %d.\n", self->curr.line);
         return 0;
+    }
+    compiler_flag_off(self, cgen_assign_to);
+
+    if (compiler_match_curr(self, tk_os_bind_equals)) {
+        compiler_eat_tk(self, lexer, s);
+
+        if (!compiler_do_or(self, lexer, s, pg)) {
+            fprintf(stderr, "Note: see RHS of assignment at line %d.\n", self->curr.line);
+            return 0;
+        }
+
+        // ? If we have consumed only a name = <value>, emit a simple update of that local slot.
+        if (compiler_flag_of(self, cgen_lhs_local)) {
+            compiler_emit_op_flagged(self, pg, op_store_local, 0, self->saved_local_id);
+            compiler_flag_off(self, cgen_lhs_local);
+        }
+        
+        // todo: generate an `op_put_prop` otherwise (assignment has complex LHS)
     }
 
     if (!compiler_match_curr(self, tk_semicolon)) {

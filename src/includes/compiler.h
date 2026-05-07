@@ -9,6 +9,8 @@
 
 int charspan_atoi(const charspan *s);
 
+
+
 #define DEFAULT_SYMBOL_CAPACITY 8
 
 typedef enum symbol_domain_t : uint8_t {
@@ -39,6 +41,13 @@ void symbol_table_clear(SymbolTable *self);
 const SymbolInfo *symbol_table_find(const SymbolTable *symbols, const charspan *s);
 const SymbolInfo *symbol_table_push(SymbolTable *symbols, const SymbolInfo *info);
 
+typedef enum bcgen_flag_t : uint8_t {
+    cgen_no_flags = 0b0000,
+    cgen_assign_to = 0b0001,    // ? Is the compiler within a variable init / assignment's LHS?
+    cgen_access_of = 0b0010,    // ? Is the compiler within a member access expression?
+    cgen_lhs_local = 0b0100,    // ? Has the compiler just consumed only an assignment LHS name?
+} CodegenFlag;
+
 typedef struct compiler_t {
     SymbolTable globals;
     SymbolTable locals;
@@ -46,6 +55,8 @@ typedef struct compiler_t {
     Token curr;
     int errors;
     int16_t chunk_idx;  // ? 0 indexes top level code, 1+ indexes a code chunk per procedure, applying only for compiling a FUN decl.
+    uint8_t saved_local_id;
+    uint8_t flags;
 } Compiler;
 
 Compiler make_compiler();
@@ -56,6 +67,10 @@ int8_t compiler_match_prev(const Compiler *self, TkTag tag);
 Token compiler_advance_tk(Compiler *self, Lexer *lexer, const charspan *s);
 void compiler_eat_tk(Compiler *self, Lexer *lexer, const charspan *s);
 void compiler_warn(Compiler *self, const char *msg, const Token *tk, const charspan *s);
+
+void compiler_flag_on(Compiler *self, CodegenFlag flag);
+void compiler_flag_off(Compiler *self, CodegenFlag flag);
+int8_t compiler_flag_of(const Compiler *self, CodegenFlag flag);
 
 size_t compiler_emit_op(Compiler *self, Program *pg, Opcode op);
 size_t compiler_emit_op_unflagged(Compiler *self, Program *pg, Opcode op, int16_t wide);
