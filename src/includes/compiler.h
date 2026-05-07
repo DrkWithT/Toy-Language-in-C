@@ -81,6 +81,7 @@ const SymbolInfo *compiler_record_function(Compiler *self, Program *pg, const ch
 const SymbolInfo *compiler_record_local(Compiler *self, Program *pg, const charspan *s);
 const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const charspan *s_symbol, Value v);
 
+int8_t compiler_do_list(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_factor(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);

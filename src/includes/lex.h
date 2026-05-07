@@ -41,6 +41,8 @@ typedef enum token_tag_t {
     tk_semicolon,
     tk_lparen,
     tk_rparen,
+    tk_lbrack,
+    tk_rbrack,
     tk_eof
 } TkTag;
 

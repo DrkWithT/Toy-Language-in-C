@@ -296,6 +296,34 @@ const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const ch
 
 
 
+int8_t compiler_do_list(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    compiler_eat_tk(self, lexer, s); // ? SKIP '['
+
+    int16_t item_count = 0;
+
+    while (!compiler_match_curr(self, tk_eof)) {
+        if (compiler_match_curr(self, tk_rbrack)) {
+            break;
+        }
+
+        if (!compiler_do_or(self, lexer, s, pg)) {
+            fprintf(stderr, "Note: See list item #%d around line %d", item_count, self->prev.line);
+            return 0;
+        }
+
+        item_count++;
+
+        if (compiler_match_curr(self, tk_comma)) {
+            compiler_eat_tk(self, lexer, s);
+        }
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    compiler_emit_op_unflagged(self, pg, op_mk_list, item_count);
+
+    return 1;
+}
+
 int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
     const Token *curr_ref = &self->curr;
     const charspan lexeme = {
@@ -344,6 +372,8 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
             }
             compiler_eat_tk(self, lexer, s);
             return 1;
+        case tk_lbrack:
+            return compiler_do_list(self, lexer, s, pg);
         default:
             compiler_warn(self, "Unexpected token in literal, expected none, true, false, or a name.", curr_ref, s);
             return 0;
