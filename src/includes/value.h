@@ -13,7 +13,7 @@ typedef enum vm_vtag_t : uint8_t {
     vtag_int,
     vtag_real,
     // vtag_strid,     // ? Holds an ID into an interned string pool.
-    // vtag_mttid,     // ? All objects are like Lua metatables: index an `AnyVec<T>` for integral keys OR compare string ID's for named keys.
+    vtag_obj_id        // ? Holds an ID into an object pool.
 } ValTag;
 
 // typedef enum vm_vflag_t : uint8_t {
@@ -26,6 +26,7 @@ typedef enum vm_vtag_t : uint8_t {
 typedef struct vm_value_t {
     union {
         int8_t byte;
+        int16_t obj_id;
         int i;          // ? This can be a 32-bit signed scalar / ID into a string or object pool.
         float f;
     } data;
@@ -49,6 +50,15 @@ static inline Value make_value_bool(int8_t b) {
             .byte = b
         },
         .tag = vtag_bool
+    };
+}
+
+static inline Value make_value_obj(int16_t obj_id) {
+    return (Value) {
+        .data = {
+            .obj_id = obj_id
+        },
+        .tag = vtag_obj_id
     };
 }
 

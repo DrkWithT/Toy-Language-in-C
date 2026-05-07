@@ -1,0 +1,73 @@
+#ifndef TOYSCRIPT_OBJECTS_H
+#define TOYSCRIPT_OBJECTS_H
+
+#include "value.h"
+
+
+
+// todo 1: include objects.h in list.h & implement simple lists.
+// todo 2: `bytecode.h` AFTER vec.h !
+
+#define DEFAULT_HEAP_CAPACITY ((int16_t) 256)
+#define DUD_HEAP_ID ((int16_t) -1)
+#define OBJECT_COST ((size_t) 64)
+
+typedef enum obj_tag_t : uint8_t {
+    otag_dud,
+    otag_list,
+    // otag_dict
+} ObjTag;
+
+typedef enum obj_flags_t : uint8_t {
+    oflag_mutable = 0b0001,
+    oflag_iterable = 0b0010
+} ObjFlag;
+
+typedef struct obj_head_t {
+    ObjTag tag;         // ? enclosed object's discriminator
+    uint8_t flags;      // ? object's metadata / flags
+} ObjHead;
+
+// ? tiny interface of objects: destruct, test truthiness, get / set values
+typedef struct obj_base_t {
+    ObjHead meta;
+    void (*del) (void *self);
+    int8_t (*as_bool) (const void *self);
+    Value (*get_v) (const void *self, Value key);
+    int8_t (*set_v) (void *self, Value key, Value item);
+} ObjBase;
+
+typedef const ObjBase* ObjPtr;
+typedef ObjBase* ObjMutPtr;
+
+void object_base_flag_on(ObjBase *self, ObjFlag flag);
+void object_base_flag_off(ObjBase *self, ObjFlag flag);
+int8_t object_base_flag_get(const ObjBase *self, ObjFlag flag);
+
+typedef struct obj_heap_t {
+    ObjMutPtr *cells;          // ? preallocated buffer of polymorphic ObjBase ptrs.
+    int16_t *free_ids;      // ? preallocated free ID pool
+    size_t cost_to_gc;      // ? object overhead required for GC cycle
+    size_t cost;            // ? object "overhead" total
+    int16_t next_free_id_pos;
+    int16_t next_cell_id;
+    int16_t tenure_count;
+    int16_t cell_capacity;
+} ObjHeap;
+
+void heap_dud(ObjHeap *self);
+void heap_new(ObjHeap *self, int16_t cells);
+void heap_del(ObjHeap *self);
+
+size_t heap_is_ripe(const ObjHeap *self);
+
+int16_t heap_gen_id(ObjHeap *self);
+void heap_reserve_id(ObjHeap *self, int16_t id);
+void heap_tenure(ObjHeap *self);
+
+const ObjBase *heap_get(const ObjHeap *self, int16_t id);
+ObjBase *heap_getm(ObjHeap *self, int16_t id);
+int16_t heap_store(ObjHeap *self, ObjMutPtr object);
+void heap_erase(ObjHeap *self, int16_t cell_id);
+
+#endif
