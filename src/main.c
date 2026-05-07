@@ -1,9 +1,24 @@
 #include <stdio.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "mystr.h"
 #include "bytecode.h"
 #include "compiler.h"
+#include "vm.h"
+
+
+
+#define VM_STACK_MAX 1024
+#define VM_DEPTH_MAX 64
+
+
+
+static const char *project_name = " _____         _____         _     _  \n"
+"|_   _|___ _ _|   __|___ ___|_|___| |_ \n"
+"  | | | . | | |__   |  _|  _| | . |  _|\n"
+"  |_| |___|_  |_____|___|_| |_|  _|_|  \n"
+"          |___|               |_|      \n";
 
 static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "NIL", .tag = tk_none},
@@ -15,6 +30,7 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "WHILE", .tag = tk_keyword_while},
     (LexItem) {.literal = "RET", .tag = tk_keyword_ret},
     (LexItem) {.literal = "FUN", .tag = tk_keyword_fun},
+    (LexItem) {.literal = "END", .tag = tk_keyword_end},
     (LexItem) {.literal = "*", .tag = tk_os_times},
     (LexItem) {.literal = "/", .tag = tk_os_slash},
     (LexItem) {.literal = "+", .tag = tk_os_plus},
@@ -22,8 +38,18 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "==", .tag = tk_os_equals},
     (LexItem) {.literal = "!=", .tag = tk_os_bang_equals},
     (LexItem) {.literal = "<", .tag = tk_os_lesser},
-    (LexItem) {.literal = ">", .tag = tk_os_greater}
+    (LexItem) {.literal = ">", .tag = tk_os_greater},
+    (LexItem) {.literal = "&&", .tag = tk_os_and},
+    (LexItem) {.literal = "||", .tag = tk_os_or},
+    (LexItem) {.literal = ":=", .tag = tk_os_bind_equals},
+    (LexItem) {.literal = "::", .tag = tk_os_access_of},
+    (LexItem) {.literal = ":", .tag = tk_colon},
+    (LexItem) {.literal = "*=", .tag = tk_os_times_equals},
+    (LexItem) {.literal = "/=", .tag = tk_os_slash_equals},
+    (LexItem) {.literal = "+=", .tag = tk_os_plus_equals},
+    (LexItem) {.literal = "-=", .tag = tk_os_minus_equals}
 };
+
 
 
 mystr read_file(const char *fname) {
@@ -41,6 +67,7 @@ mystr read_file(const char *fname) {
     mystr source;
     mystr_res(&source, 64);
 
+    size_t total_rc = 0;
     size_t rc = 0;
 
     while (1) {
@@ -50,33 +77,63 @@ mystr read_file(const char *fname) {
             break;
         }
 
+        total_rc += rc;
+
         chunk[rc] = '\0';
         mystr_append_raw(&source, chunk, rc);
     }
 
     if (ferror(fs)) {
-        perror("File read failed.");
+        fprintf(stderr, "File read failed.\n");
         return (mystr) {
             .data = NULL,
             .capacity = 0,
             .length = 0
         };
+    } else if (total_rc == 0) {
+        mystr_del(&source);
     }
 
     fclose(fs);
     return source;
 }
 
+
+
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "usage: ./toyscript [-h | -v | <file name>]\n-h: help\n-v: show version\n");
+    const char *source_fname = NULL;
+    int8_t show_version = 0;
+    int8_t show_help = 0;
+    int8_t dump_bc = 0;
+    int8_t allow_run = 0;
+
+    if (argc < 2) {
+        fprintf(stderr, "usage: ./toyscript [-h | -v | [-d | -r] <file name>]\n-h: help\n-v: show version\n");
         return 1;
     }
 
-    mystr source_str = read_file(argv[1]);
+    for (int16_t arg_i = 0; arg_i < argc - 1; arg_i++) {
+        if (!strcmp(argv[1 + arg_i], "-v")) { show_version = 1;}
+        else if (!strcmp(argv[1 + arg_i], "-h")) { show_help = 1; }
+        else if (!strcmp(argv[1 + arg_i], "-d")) { dump_bc = 1; }
+        else if (!strcmp(argv[1 + arg_i], "-r")) { allow_run = 1; }
+        else { source_fname = argv[1 + arg_i]; }
+    }
 
-    puts("Read source is:\n");
-    puts(mystr_raw(&source_str));
+    if (show_version) {
+        printf("\x1b[1;33m%s\x1b[0m\n\nv0.1.0\t By: DrkWithT (GitHub)", project_name);
+        return 0;
+    } else if (show_help) {
+        printf("usage: ./toyscript [-h | -v | [-d | -r] <file name>]\n-h: help\n-v: show version\n");
+        return 0;
+    }
+
+    mystr source_str = (source_fname != NULL) ? read_file(source_fname) : (mystr) {.data = NULL, .length = 0, .capacity = 0};
+
+    if (mystr_empty(&source_str)) {
+        fprintf(stderr, "Read Error: The file at \x1b[1;29m%s\x1b[0m could not be read.", source_fname);
+        return 1;
+    }
 
     charspan source_view;
     charspan_new(&source_view, mystr_raw(&source_str), mystr_len(&source_str));
@@ -88,13 +145,35 @@ int main(int argc, char *argv[]) {
     program_dud(&program);
 
     if (!compiler_do_source(&compiler, &tokenizer, &source_view, &program)) {
-        perror("Please check all compile errors above.");
         return 1;
     }
+    
+    if (dump_bc) {
+        dump_program(&program);
+    }
 
+    if (!allow_run) {
+        return 0;
+    }
+
+    VMState vm = make_vm(&program, VM_STACK_MAX, VM_DEPTH_MAX);
+
+    struct timeval begin, end;
+    gettimeofday(&begin, NULL);
+    const VMStatus status = vm_run(&vm);
+    gettimeofday(&end, NULL);
+
+    const Value ans = vm_result(&vm);
+
+    puts("Result:");
+    print_value(&ans);
+    printf("\nDONE in %d ms\n", abs(end.tv_usec / 1000 - begin.tv_usec / 1000));
+
+    dispose_vm(&vm);
     program_del(&program);
     compiler_del(&compiler);
     charspan_del(&source_view);
     mystr_del(&source_str);
-    return 0;
+
+    return (status == vm_status_ok) ? 0 : 1;
 }

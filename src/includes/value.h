@@ -7,21 +7,32 @@
 
 
 
-typedef enum vm_vtag_t {
+typedef enum vm_vtag_t : uint8_t {
     vtag_nil,
     vtag_bool,
     vtag_int,
-    vtag_real
+    vtag_real,
+    // vtag_strid,     // ? Holds an ID into an interned string pool.
+    vtag_obj_id        // ? Holds an ID into an object pool.
 } ValTag;
+
+// typedef enum vm_vflag_t : uint8_t {
+//     vflag_frozen = 0b00,
+//     vflag_writable = 0b01,
+//     vflag_configurable = 0b10,
+//     vflag_mutable = vflag_writable | vflag_configurable,
+// } ValFlag;
 
 typedef struct vm_value_t {
     union {
         int8_t byte;
-        int i;
+        int16_t obj_id;
+        int i;          // ? This can be a 32-bit signed scalar / ID into a string or object pool.
         float f;
     } data;
 
     ValTag tag;
+    // ValFlag flags;
 } Value;
 
 static inline Value make_value_none() {
@@ -39,6 +50,15 @@ static inline Value make_value_bool(int8_t b) {
             .byte = b
         },
         .tag = vtag_bool
+    };
+}
+
+static inline Value make_value_obj(int16_t obj_id) {
+    return (Value) {
+        .data = {
+            .obj_id = obj_id
+        },
+        .tag = vtag_obj_id
     };
 }
 
@@ -65,6 +85,9 @@ void Value_new(MAYBE_UNUSED Value *ins);
 void Value_copy(MAYBE_UNUSED Value *ins, MAYBE_UNUSED const Value *other);
 void Value_move(MAYBE_UNUSED Value *ins, MAYBE_UNUSED Value *other);
 void Value_del(MAYBE_UNUSED Value *ins);
+
+// int value_as_strid(const Value *v);
+// int value_as_mttid(const Value *v);
 void print_value(const Value *v);
 
 STUB_VEC(Value)

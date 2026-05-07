@@ -13,6 +13,7 @@ typedef enum token_tag_t {
     tk_keyword_while,
     tk_keyword_ret,
     tk_keyword_fun,
+    tk_keyword_end,
     tk_identifier,
     tk_none,
     tk_true,
@@ -28,11 +29,21 @@ typedef enum token_tag_t {
     tk_os_bang_equals,
     tk_os_lesser,
     tk_os_greater,
+    tk_os_and,
+    tk_os_or,
+    tk_os_bind_equals,  // ? `:=` is for mutating a variable
+    tk_os_access_of,    // ? `::` for accessing an item by key or index
+    tk_os_times_equals,
+    tk_os_slash_equals,
+    tk_os_plus_equals,  // ? `+=`
+    tk_os_minus_equals,
     tk_comma,
     tk_colon,
     tk_semicolon,
     tk_lparen,
     tk_rparen,
+    tk_lbrack,
+    tk_rbrack,
     tk_eof
 } TkTag;
 
@@ -54,8 +65,8 @@ static inline int8_t is_numeric_symbol(char c) {
 static inline int8_t is_op_symbol(char c) {
     switch (c) {
         case '*': case '/': case '+': case '-': // arithmetic
-        case '=': case '!': case '<': case '>': // comparison / logical
-        case '?': return 1; // extra
+        case '=': case '!': case '<': case '>': case '|': case '&': // comparisons / logicals
+        case '.': case ':': return 1; // extra
         default: return 0;
     }
 }

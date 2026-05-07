@@ -1,5 +1,5 @@
-LET a: 1;
-LET b: 2;
-LET c: 3;
+`test simple variables`
 
-RET a + b + c;
+LET a : 1, b : 1;
+
+RET a + b;

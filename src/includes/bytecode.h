@@ -39,6 +39,10 @@ typedef enum vm_opcode_t : uint8_t {
     op_store_local,
     op_put_k,
     op_dup,
+    op_pop,
+    op_mk_list,
+    op_get_idx,
+    op_set_idx,
     op_mul,
     op_div,
     op_add,
@@ -49,6 +53,7 @@ typedef enum vm_opcode_t : uint8_t {
     op_gt,
     op_jmp,
     op_jmp_false,
+    op_jmp_if,
     op_call,
     op_put_callee,
     op_ret

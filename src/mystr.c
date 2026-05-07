@@ -41,7 +41,13 @@ size_t charspan_len(const charspan *self) {
 }
 
 int8_t charspan_equals_raw(const charspan *self, const char *s, size_t n) {
-    return self->length == n && !strncmp(self->data, s, self->length);
+    size_t s_len = strlen(s);
+
+    if (s_len != n) {
+        return 0;
+    }
+
+    return !strncmp(self->data, s, n);
 }
 
 int8_t charspan_equals_charspan(const charspan *self, const charspan *other) {
@@ -126,6 +132,7 @@ void mystr_del(mystr *self) {
     if (self->data != NULL) {
         free(self->data);
         self->data = NULL;
+        self->capacity = 0;
     }
 }
 

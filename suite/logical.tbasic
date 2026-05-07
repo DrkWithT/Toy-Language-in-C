@@ -1,0 +1,13 @@
+`test logical expressions here`
+
+LET a : 1;
+LET b : 67;
+LET c : 69;
+
+`must be true`
+LET testAnd : a != b && a != c;
+
+`must be true`
+LET testOr : a < b || a > c;
+
+RET testAnd && testOr;

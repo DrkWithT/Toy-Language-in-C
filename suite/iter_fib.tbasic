@@ -1,0 +1,16 @@
+`test iterative fib`
+
+FUN fibIt(n):
+    LET tmp : 0, a : 0, b : 1;
+
+    WHILE n > 0:
+        tmp := a;
+        a := b;
+        b := tmp + b;
+        n := n - 1;
+    END
+
+    RET a;
+END
+
+RET fibIt(30);

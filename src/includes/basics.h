@@ -23,7 +23,6 @@ for (size_t name_of_p##_##i = 0; name_of_p##_##i < n; name_of_p##_##i++) {\
 }\
 \
 
-#define NEW_OBJ(type, name, args...) type##_new(&name, args)
-#define DELETE_OBJ(type, name) type##_del(&name)
+#define ALLOC_TYPE(type) ((type*)malloc(sizeof(type)))
 
 #endif
