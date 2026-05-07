@@ -682,7 +682,33 @@ int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program 
     return 1;
 }
 
-// int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    compiler_eat_tk(self, lexer, s); // ? skip WHILE
+
+    const int16_t while_check_pos = pg->chunks.data[self->chunk_idx].code.length;
+    if (!compiler_do_or(self, lexer, s, pg)) {
+        fprintf(stderr, "Note: See while-loop condition around line %d.\n", self->curr.line);
+        return 0;
+    }
+
+    const int16_t while_jmp_out_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op_flagged(self, pg, op_jmp_false, 0, 0); // ? flags = 0 ==> forward jump applies!
+
+    if (!compiler_do_block(self, lexer, s, pg)) {
+        fprintf(stderr, "Note: See while-body around line %d.\n", self->curr.line);
+        return 0;
+    }
+
+    const int16_t while_jmp_back_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op_flagged(self, pg, op_jmp, 1, 0); // ? flags = 1 ==> backwards jump applies!
+    const int16_t while_exit_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op(self, pg, op_pop); // ? pop off check after loop quits WHEN it's FALSE
+
+    pg->chunks.data[self->chunk_idx].code.data[while_jmp_back_pos].wide = while_jmp_back_pos - while_check_pos;
+    pg->chunks.data[self->chunk_idx].code.data[while_jmp_out_pos].wide = while_exit_pos - while_jmp_out_pos;
+
+    return 1;
+}
 
 int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
     compiler_eat_tk(self, lexer, s); // ? skip RET
@@ -744,6 +770,8 @@ int8_t compiler_do_nestable_stmt(Compiler *self, Lexer *lexer, const charspan *s
         return compiler_do_vars(self, lexer, s, pg);
     case tk_keyword_if:
         return compiler_do_ifs(self, lexer, s, pg);
+    case tk_keyword_while:
+        return compiler_do_while(self, lexer, s, pg);
     case tk_keyword_ret:
         return compiler_do_ret(self, lexer, s, pg);
     default:
@@ -840,6 +868,8 @@ int8_t compiler_do_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program
         return compiler_do_vars(self, lexer, s, pg);
     case tk_keyword_if:
         return compiler_do_ifs(self, lexer, s, pg);
+    case tk_keyword_while:
+        return compiler_do_while(self, lexer, s, pg);
     case tk_keyword_ret:
         return compiler_do_ret(self, lexer, s, pg);
     case tk_keyword_fun:
@@ -852,7 +882,7 @@ int8_t compiler_do_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program
 int8_t compiler_do_source(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
     compiler_eat_tk(self, lexer, s); // ? remove the unknown token placeholder by getting the 1st token into self->curr... this is needed for correct parsing --> bytecode
 
-    // ! IMPORTANT: push an empty bytecode chunk so that an OOB terminate doesn't happen when Line 248 tries to push a constant, etc. for AnyVec_<type>.
+    // ! IMPORTANT: push an empty bytecode chunk so that an OOB terminate doesn't happen when ~ L248 tries to push a constant, etc. for AnyVec_<type>.
     Chunk temp;
     Chunk_new(&temp); // ? initialize empty chunk
     AnyVec_Chunk_push(&pg->chunks, &temp); // ? copy the empty chunk into this Vec, but don't touch temp again... just did scuffed destructive moves??

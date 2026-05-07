@@ -9,7 +9,7 @@ static const OpFunc opcode_handlers[] = {
     fn_put_bool,
     fn_load_imm_gid,
     fn_load_local,
-    // fn_ref_local,
+    // fn_ref_local, // todo: add reference semantics to complex
     fn_store_local,
     fn_put_k,
     fn_dup,
@@ -353,7 +353,7 @@ VMStatus fn_gt(VMState *s, const Instruction *ip, const Value *cvp, Value *stack
 }
 
 VMStatus fn_jmp(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
-    ip += ip->wide;
+    ip += (0 - ip->flag) * ip->wide; // ? If IP->FLAG == 1, the jump is negative (backwards).
 
     TAILCALL
     return vm_dispatch(s, ip, cvp, stack);
@@ -361,24 +361,29 @@ VMStatus fn_jmp(VMState *s, const Instruction *ip, const Value *cvp, Value *stac
 
 VMStatus fn_jmp_false(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
     const Value *temp = stack + s->sp;
+    int8_t require_truthy_pop = 0;
 
     switch (temp->tag) {
-    case vtag_nil:
-        ip += ip->wide;
-        break;
     case vtag_bool:
-        ip += (temp->data.byte == 0) ? ip->wide : 1;
+        require_truthy_pop = temp->data.byte != 0;
         break;
     case vtag_int:
-        ip += (temp->data.i == 0) ? ip->wide : 1;
+        require_truthy_pop = temp->data.i != 0;
         break;
     case vtag_real:
-        ip += (temp->data.f == 0.0f) ? ip->wide : 1;
+        require_truthy_pop = temp->data.f != 0.0f;
         break;
+    case vtag_nil:
     default:
+        break;
+    }
+
+    // ? NOTE: IF temp == TRUE, POP it & advance to next evaluation. This works for short-circuiting of `temp_eval1 --> LHS && temp_eval2 --> RHS`.
+    if (require_truthy_pop) {
         s->sp--;
         ip++;
-        break;
+    } else {
+        ip += ip->wide;
     }
 
     TAILCALL

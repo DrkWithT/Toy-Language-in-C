@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (show_version) {
-        printf("\x1b[1;33m%s\x1b[0m\n\nv0.0.1\t By: DrkWithT (GitHub)", project_name);
+        printf("\x1b[1;33m%s\x1b[0m\n\nv0.1.0\t By: DrkWithT (GitHub)", project_name);
         return 0;
     } else if (show_help) {
         printf("usage: ./toyscript [-h | -v | [-d | -r] <file name>]\n-h: help\n-v: show version\n");
@@ -144,7 +144,6 @@ int main(int argc, char *argv[]) {
     program_dud(&program);
 
     if (!compiler_do_source(&compiler, &tokenizer, &source_view, &program)) {
-        fprintf(stderr, "Please check all compile errors above.\n");
         return 1;
     }
     
@@ -167,7 +166,7 @@ int main(int argc, char *argv[]) {
 
     puts("Result:");
     print_value(&ans);
-    printf("\nDONE in %d ms\n", (end.tv_usec - begin.tv_usec) / 1000);
+    printf("\nDONE in %d ms\n", abs(end.tv_usec / 1000 - begin.tv_usec / 1000));
 
     program_del(&program);
     compiler_del(&compiler);

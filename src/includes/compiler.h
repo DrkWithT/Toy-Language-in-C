@@ -92,7 +92,7 @@ int8_t compiler_do_or(Compiler *self, Lexer *lexer, const charspan *s, Program *
 
 int8_t compiler_do_vars(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
-// int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_func(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
