@@ -44,7 +44,7 @@ const SymbolInfo *symbol_table_push(SymbolTable *symbols, const SymbolInfo *info
 typedef enum bcgen_flag_t : uint8_t {
     cgen_no_flags = 0b0000,
     cgen_assign_to = 0b0001,    // ? Is the compiler within a variable init / assignment's LHS?
-    cgen_access_of = 0b0010,    // ? Is the compiler within a member access expression?
+    cgen_access_of = 0b0010,    // ? Is the compiler within a member access expression LHS?
     cgen_lhs_local = 0b0100,    // ? Has the compiler just consumed only an assignment LHS name?
 } CodegenFlag;
 
@@ -83,6 +83,7 @@ const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const ch
 
 int8_t compiler_do_list(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_lhs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_factor(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_sum(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);

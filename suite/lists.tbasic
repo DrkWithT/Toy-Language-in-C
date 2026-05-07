@@ -1,0 +1,8 @@
+`test list get and set`
+
+LET stuff : [100];
+
+stuff::0 := 1;
+
+`should be 2`
+RET stuff::0 + stuff::0;

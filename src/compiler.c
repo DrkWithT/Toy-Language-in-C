@@ -407,11 +407,50 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
     return 1;
 }
 
+int8_t compiler_do_lhs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    if (!compiler_do_literal(self, lexer, s, pg)) {
+        fprintf(stderr, "Note: See LHS of access-of expression at line %d.\n", self->curr.line);
+        return 0;
+    }
+
+    if (!compiler_match_prev(self, tk_identifier) || !compiler_match_curr(self, tk_os_access_of)) {
+        return 1;
+    }
+
+    const int8_t lhs_is_in_assign_lhs = compiler_flag_of(self, cgen_lhs_local);
+    if (lhs_is_in_assign_lhs) {
+        compiler_emit_op_flagged(self, pg, op_load_local, 0, self->saved_local_id);
+        compiler_flag_off(self, cgen_lhs_local);
+    }
+
+    while (!compiler_match_curr(self, tk_eof)) {
+        if (!compiler_match_curr(self, tk_os_access_of)) {
+            break;
+        }
+        compiler_eat_tk(self, lexer, s);
+
+        if (!compiler_do_literal(self, lexer, s, pg)) {
+            fprintf(stderr, "Note: See RHS of access-of expression at line %d.\n", self->curr.line);
+            return 0;
+        }
+
+        if (compiler_match_curr(self, tk_os_access_of)) {
+            compiler_emit_op(self, pg, op_get_idx);
+        } else if (lhs_is_in_assign_lhs) {
+            compiler_flag_on(self, cgen_access_of);
+        } else {
+            compiler_emit_op(self, pg, op_get_idx);
+        }
+    }
+
+    return 1;
+}
+
 int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
     const Token callee_name = self->curr;
     int arg_count = 0;
 
-    if (!compiler_do_literal(self, lexer, s, pg)) {
+    if (!compiler_do_lhs(self, lexer, s, pg)) {
         fprintf(stderr, "Note: See call at line %d.\n", self->curr.line);
         return 0;
     }
@@ -780,9 +819,13 @@ int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Pr
         if (compiler_flag_of(self, cgen_lhs_local)) {
             compiler_emit_op_flagged(self, pg, op_store_local, 0, self->saved_local_id);
             compiler_flag_off(self, cgen_lhs_local);
+        } else if (compiler_flag_of(self, cgen_access_of)) {
+            compiler_emit_op(self, pg, op_set_idx);
+            compiler_flag_off(self, cgen_access_of);
+        } else {
+            compiler_warn(self, "Invalid LHS of assignment, expected a name or key-access expression around line %d.\n", &self->prev, s);
+            // return 0;
         }
-        
-        // todo: generate an `op_put_prop` otherwise (assignment has complex LHS)
     }
 
     if (!compiler_match_curr(self, tk_semicolon)) {
