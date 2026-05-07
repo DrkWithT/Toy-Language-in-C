@@ -26,10 +26,10 @@ A very trivial scripting language implemented in C11. Only for educational purpo
  - Add loops support. **OK**
 
 #### v0.2.0
- - Add object base. **WIP**
- - Add object heap. **WIP**
- - Add simple, fixed size list objects.
- - Add mark & sweep GC.
+ - Add object base. **OK**
+ - Add object heap. **OK**
+ - Add simple, fixed size list objects. **OK**
+ - Add mark & sweep GC. **PENDING**
 
 #### v0.3.0
  - Add immutable strings as char list objects.

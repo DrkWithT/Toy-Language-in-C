@@ -48,13 +48,20 @@ void heap_del(ObjHeap *self) {
         for (int16_t cell_i = 0; cell_i < self->cell_capacity; cell_i++) {
             ObjMutPtr target_cell = self->cells[cell_i];
 
-            if (target_cell != NULL) {
-                target_cell->del(&target_cell);
+            if (!target_cell) continue;
+
+            if (target_cell->meta.tag == otag_list) {
+                target_cell->del(target_cell);
                 free(target_cell);
                 target_cell = NULL;
             }
         }
+
+        free(self->cells);
+        self->cells = NULL;
     }
+
+
 
     if (self->free_ids != NULL) {
         free(self->free_ids);
@@ -111,6 +118,7 @@ int16_t heap_store(ObjHeap *self, ObjMutPtr object) {
 
     if (dest_id != DUD_HEAP_ID) {   
         self->cells[dest_id] = object;
+        self->cost += OBJECT_COST;
     }
 
     return dest_id;
@@ -126,6 +134,7 @@ void heap_erase(ObjHeap *self, int16_t cell_id) {
 
     target->del(target);
     free(target);
+    self->cost -= OBJECT_COST;
 
     heap_reserve_id(self, cell_id);
 }
