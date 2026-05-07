@@ -168,6 +168,7 @@ int main(int argc, char *argv[]) {
     print_value(&ans);
     printf("\nDONE in %d ms\n", abs(end.tv_usec / 1000 - begin.tv_usec / 1000));
 
+    dispose_vm(&vm);
     program_del(&program);
     compiler_del(&compiler);
     charspan_del(&source_view);
