@@ -8,4 +8,4 @@ FUN fib(n):
     END
 END
 
-RET fib(30);
+RET fib(35);

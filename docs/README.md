@@ -21,18 +21,18 @@ A very trivial scripting language implemented in C11. Only for educational purpo
 
 ### Roadmap
 #### v0.1.0
- - Add logical operator (&&, ||) support. **WIP**
- - Add (compound) assignment operators.
-    - Add value pointer reference semantics (with mutability flag).
-    - Add `ref_local` opcode. `get_local` gets and resolves any stack value.
- - Add loops support.
+ - Add logical operator (&&, ||) support. **OK**
+ - Add assignment operator.
+    - Add variable assignment. **OK**
+ - Add loops support. **OK**
 
 #### v0.2.0
  - Add object base.
  - Add object heap.
  - Add immutable strings as char list objects.
- - Add native function library for console I/O.
- - Add file I/O.
+ - Add native function library for:
+   - I/O
+   - Math: pow(), sqrt(), clamp(), floor(), and ceil()
 
 #### v0.3.0
  - Add simple, fixed size list objects.
