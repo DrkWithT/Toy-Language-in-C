@@ -7,8 +7,7 @@ A very trivial scripting language implemented in C11. Only for educational purpo
  - Requires CMake 4.2 (but 3.30+ is fine)
  - Make, Ninja, or another build tool
  - Clang is preferred
- - Build: `cmake --fresh -S . -B build && cmake --build build`
- - Clean: `rm -rf ./build/toyscript`
+ - Usage: `./project.sh help`
 
 ### Basic Features
  - BASIC like but...
@@ -27,13 +26,13 @@ A very trivial scripting language implemented in C11. Only for educational purpo
  - Add loops support. **OK**
 
 #### v0.2.0
- - Add object base.
- - Add object heap.
+ - Add object base. **WIP**
+ - Add object heap. **WIP**
+ - Add simple, fixed size list objects.
+ - Add mark & sweep GC.
+
+#### v0.3.0
  - Add immutable strings as char list objects.
  - Add native function library for:
    - I/O
    - Math: pow(), sqrt(), clamp(), floor(), and ceil()
-
-#### v0.3.0
- - Add simple, fixed size list objects.
- - Add mark & sweep GC.

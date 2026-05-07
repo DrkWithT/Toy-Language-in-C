@@ -16,6 +16,8 @@ target_sources(toyscript_impl PRIVATE
     "${PROJECT_SOURCES}/mystr.c"
     "${PROJECT_SOURCES}/lex.c"
     "${PROJECT_SOURCES}/value.c"
+    "${PROJECT_SOURCES}/objects.c"
+    "${PROJECT_SOURCES}/obj_list.c"
     "${PROJECT_SOURCES}/bytecode.c"
     "${PROJECT_SOURCES}/compiler.c"
     "${PROJECT_SOURCES}/vm.c"
