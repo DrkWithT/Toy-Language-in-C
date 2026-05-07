@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "bytecode.h"
-
+#include "objects.h"
 
 
 #define TAILCALL __attribute((musttail))
@@ -31,6 +31,9 @@ VMStatus fn_store_local(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_put_k(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_dup(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_pop(VMState *, const Instruction *, const Value *, Value *);
+VMStatus fn_mk_list(VMState *, const Instruction *, const Value *, Value *);
+VMStatus fn_get_idx(VMState *, const Instruction *, const Value *, Value *);
+VMStatus fn_set_idx(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_mul(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_div(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_add(VMState *, const Instruction *, const Value *, Value *);
@@ -51,6 +54,7 @@ VMStatus vm_dispatch(VMState *s, const Instruction *ip, const Value *cvp, Value 
 
 // ? Main VM state. Tracks stack state and refers to a current bytecode chunk for dispatch.
 typedef struct vm_state_t {
+    ObjHeap heap;
     const Program *prgm;
     const Instruction *ip;
     const Value *cvp;
@@ -62,6 +66,8 @@ typedef struct vm_state_t {
 } VMState;
 
 VMState make_vm(const Program *program, int locals_max, uint8_t depth_max);
+
+void dispose_vm(VMState *s);
 
 VMStatus vm_status(const VMState *s);
 

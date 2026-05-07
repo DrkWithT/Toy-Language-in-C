@@ -1,5 +1,6 @@
 #include <math.h>
 #include "vm.h"
+#include "obj_list.h"
 
 
 
@@ -9,11 +10,13 @@ static const OpFunc opcode_handlers[] = {
     fn_put_bool,
     fn_load_imm_gid,
     fn_load_local,
-    // fn_ref_local, // todo: add reference semantics to complex
     fn_store_local,
     fn_put_k,
     fn_dup,
     fn_pop,
+    fn_mk_list,
+    fn_get_idx,
+    fn_set_idx,
     fn_mul,
     fn_div,
     fn_add,
@@ -102,6 +105,118 @@ VMStatus fn_dup(VMState *s, const Instruction *ip, const Value *cvp, Value *stac
 
 VMStatus fn_pop(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
     s->sp -= ip->flag;
+    ip++;
+
+    TAILCALL
+    return vm_dispatch(s, ip, cvp, stack);
+}
+
+VMStatus fn_mk_list(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
+    const size_t pushing_count = ip->wide;
+    ObjMutPtr temp_object = (ObjMutPtr)alloc_list(pushing_count);
+
+    if (!temp_object) {
+        s->status = vm_status_err_abort;
+        return s->status;
+    }
+
+    const int16_t temp_object_id = heap_store(&s->heap, temp_object);
+
+    /*
+     * Example: Push items 1 to 3 inclusively and in-order to temp_object...
+     * SAMPLE OPCODE: MK_LIST (N = 3)
+     * 
+     * -- BEFORE --------------------
+     * |  item 3  | <-- SP
+     * |  item 2  |
+     * |  item 1  | <-- BASE_ITEM_POS
+     *
+     * -- AFTER ---------------------
+     * | (popped) |
+     * | (popped) |
+     * | (popped) |
+     * | <obj ID> | <-- SP = OLD_SP - N + 1
+     */
+    const size_t base_item_pos = s->sp - pushing_count + 1;
+    for (int offset = 0; offset < pushing_count; offset++) {
+        temp_object->set_v(temp_object, make_value_none(), stack[base_item_pos + offset]); // ? list[nil] := temp; is like list.push_back(item);
+    }
+
+    s->sp -= (pushing_count - 1);
+    stack[s->sp] = make_value_obj(temp_object_id);
+    ip++;
+
+    TAILCALL
+    return vm_dispatch(s, ip, cvp, stack);
+}
+
+VMStatus fn_get_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
+    /*
+     * EXAMPLE: expr foo::0 ;
+     *
+     * ------ BEFORE --------------------------------
+     * | Value(int(0)) | <-- SP, i32 of 0 as index
+     * | Value(oid(X)) | <-- object ID as "reference"
+     *
+     * ------ AFTER ---------------------------------
+     * |   (popped!)   |
+     * | Value(foo[0]) | <-- SP
+     */
+    const int16_t target_object_id = (stack[s->sp - 1].tag == vtag_obj_id)
+        ? stack[s->sp - 1].data.obj_id
+        : DUD_HEAP_ID;
+    ObjPtr object_ref = heap_get(&s->heap, target_object_id);
+
+    if (!object_ref) {
+        s->status = vm_status_err_bad_op;
+        return s->status;
+    } else if (object_ref->meta.tag != otag_list) {
+        s->status = vm_status_err_bad_op;
+        return s->status;
+    } else {
+        s->sp--;
+        stack[s->sp] = object_ref->get_v(object_ref, stack[s->sp + 1]);
+    }
+
+    ip++;
+
+    TAILCALL
+    return vm_dispatch(s, ip, cvp, stack);
+}
+
+VMStatus fn_set_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
+    /*
+     * EXAMPLE: expr foo::0 := 69420;
+     *
+     * ------ BEFORE --------------------------------
+     * | Value(int(69420)) | <-- SP - 0, temporary to store
+     * | Value(int(0))     | <-- SP - 1, i32 of 0 as index
+     * | Value(oid(X))     | <-- object ID as "reference"
+     *
+     * ------ AFTER ---------------------------------
+     * | (popped!)          |
+     * | (popped!)          |
+     * | Value(int(69420))  | <-- SP, assignment leaves the same item, allowing (foo::0 := 1) + 2??
+     */
+    
+    const Value incoming_temp = stack[s->sp];
+    const int16_t target_object_id = (stack[s->sp - 2].tag == vtag_obj_id)
+        ? stack[s->sp - 2].data.obj_id
+        : DUD_HEAP_ID;
+    ObjMutPtr object_ref = heap_getm(&s->heap, target_object_id);
+
+    if (!object_ref) {
+        s->status = vm_status_err_bad_op;
+        return s->status;
+    } else if (object_ref->meta.tag != otag_list) {
+        s->status = vm_status_err_bad_op;
+        return s->status;
+    } else {
+        object_ref->set_v(object_ref, stack[s->sp - 1], incoming_temp);
+        s->sp -= 2;
+        stack[s->sp] = incoming_temp;
+    }
+
     ip++;
 
     TAILCALL
@@ -361,9 +476,11 @@ VMStatus fn_jmp(VMState *s, const Instruction *ip, const Value *cvp, Value *stac
 
 VMStatus fn_jmp_false(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
     const Value *temp = stack + s->sp;
+    ObjPtr temp_as_obj = NULL;
     int8_t require_truthy_pop = 0;
 
     switch (temp->tag) {
+    case vtag_nil: break;
     case vtag_bool:
         require_truthy_pop = temp->data.byte != 0;
         break;
@@ -373,7 +490,10 @@ VMStatus fn_jmp_false(VMState *s, const Instruction *ip, const Value *cvp, Value
     case vtag_real:
         require_truthy_pop = temp->data.f != 0.0f;
         break;
-    case vtag_nil:
+    case vtag_obj_id:
+        temp_as_obj = heap_get(&s->heap, (temp->tag == vtag_obj_id) ? temp->data.obj_id : -1); // ? Use polymorphic as_bool() call on the object ONLY IF it's legit... For safety reasons.
+        require_truthy_pop = (temp_as_obj) ? temp_as_obj->as_bool(temp_as_obj) : 0;
+        break;
     default:
         break;
     }
@@ -485,7 +605,11 @@ VMState make_vm(const Program *program, int locals_max, uint8_t depth_max) {
     const Chunk *entry_chunk = program->chunks.data + program->entry_id;
     Value *stack_buffer = calloc(locals_max, sizeof(Value));
 
+    ObjHeap temp_heap;
+    heap_dud(&temp_heap); // TODO: Later, make VM creation take an initial heap capacity. This actually defaults to 256 object cells.
+
     return (VMState) {
+        .heap = temp_heap,
         .prgm = program,
         .ip = entry_chunk->code.data,
         .cvp = entry_chunk->constants.data,
@@ -495,6 +619,10 @@ VMState make_vm(const Program *program, int locals_max, uint8_t depth_max) {
         .depth = 1,
         .status = (stack_buffer != NULL) ? vm_status_pending : vm_status_err_abort
     };
+}
+
+void dispose_vm(VMState *s) {
+    heap_del(&s->heap);
 }
 
 VMStatus vm_status(const VMState *s) {
