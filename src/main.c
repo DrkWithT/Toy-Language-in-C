@@ -13,7 +13,6 @@
 #define VM_DEPTH_MAX 64
 
 
-
 static const char *project_name = " _____         _____         _     _  \n"
 "|_   _|___ _ _|   __|___ ___|_|___| |_ \n"
 "  | | | . | | |__   |  _|  _| | . |  _|\n"
@@ -121,7 +120,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (show_version) {
-        printf("\x1b[1;33m%s\x1b[0m\n\nv0.1.0\t By: DrkWithT (GitHub)", project_name);
+        printf("\x1b[1;33m%s\x1b[0m\n\nv0.2.0\t By: DrkWithT (GitHub)", project_name);
         return 0;
     } else if (show_help) {
         printf("usage: ./toyscript [-h | -v | [-d | -r] <file name>]\n-h: help\n-v: show version\n");
@@ -156,7 +155,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    VMState vm = make_vm(&program, VM_STACK_MAX, VM_DEPTH_MAX);
+    VMState vm = make_vm(&program, VM_STACK_MAX, VM_DEPTH_MAX, DEFAULT_HEAP_CAPACITY);
 
     struct timeval begin, end;
     gettimeofday(&begin, NULL);

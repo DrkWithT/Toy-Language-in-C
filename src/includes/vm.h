@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "bytecode.h"
 #include "objects.h"
+#include "gc.h"
 
 
 #define TAILCALL __attribute((musttail))
@@ -55,6 +56,7 @@ VMStatus vm_dispatch(VMState *s, const Instruction *ip, const Value *cvp, Value 
 // ? Main VM state. Tracks stack state and refers to a current bytecode chunk for dispatch.
 typedef struct vm_state_t {
     ObjHeap heap;
+    GCState gc;
     const Program *prgm;
     const Instruction *ip;
     const Value *cvp;
@@ -65,7 +67,7 @@ typedef struct vm_state_t {
     VMStatus status;
 } VMState;
 
-VMState make_vm(const Program *program, int locals_max, uint8_t depth_max);
+VMState make_vm(const Program *program, int locals_max, uint8_t depth_max, int16_t heap_pop_max);
 
 void dispose_vm(VMState *s);
 

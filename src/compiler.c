@@ -39,8 +39,8 @@ SymbolTable make_symbol_table() {
             .infos = temp_infos,
             .length = 0,
             .capacity = DEFAULT_SYMBOL_CAPACITY,
-            .next_local_id = 1,     // ? Start from BP + 1 since BP holds the callee.
-            .next_global_id = 1     // ? Start from 1 since chunks 1+ are for other procedures.
+            .next_local_id = 0,     // ? Start from BP since BP holds the callee... OLD + 1 --> new ID.
+            .next_global_id = 1     // ? Start from 1 since chunks 1+ are for other procedures. 0 is the implicit main one.
         };
     }
 
@@ -49,7 +49,7 @@ SymbolTable make_symbol_table() {
         .length = 0,
         .capacity = 0,
         .next_local_id = 0,
-        .next_global_id = 0
+        .next_global_id = 1
     };
 }
 
@@ -264,9 +264,11 @@ const SymbolInfo *compiler_record_local(Compiler *self, Program *pg, const chars
         return result;
     }
 
+    self->locals.next_local_id++;
+
     SymbolInfo new_info = {
         .name = *s,
-        .id = self->locals.next_local_id++,
+        .id = self->locals.next_local_id,
         .domain = symbol_local
     };
 
@@ -771,7 +773,7 @@ int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Progra
     const int16_t while_jmp_back_pos = pg->chunks.data[self->chunk_idx].code.length;
     compiler_emit_op_flagged(self, pg, op_jmp, 1, 0); // ? flags = 1 ==> backwards jump applies!
     const int16_t while_exit_pos = pg->chunks.data[self->chunk_idx].code.length;
-    compiler_emit_op(self, pg, op_pop); // ? pop off check after loop quits WHEN it's FALSE
+    compiler_emit_op_flagged(self, pg, op_pop, 1, 0); // ? pop off check after loop quits WHEN it's FALSE
 
     pg->chunks.data[self->chunk_idx].code.data[while_jmp_back_pos].wide = while_jmp_back_pos - while_check_pos;
     pg->chunks.data[self->chunk_idx].code.data[while_jmp_out_pos].wide = while_exit_pos - while_jmp_out_pos;

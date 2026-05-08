@@ -112,6 +112,8 @@ VMStatus fn_pop(VMState *s, const Instruction *ip, const Value *cvp, Value *stac
 }
 
 VMStatus fn_mk_list(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
+    GCState_collect(&s->gc, &s->heap, stack, s->sp);
+
     const size_t pushing_count = ip->wide;
     ObjMutPtr temp_object = (ObjMutPtr)alloc_list(pushing_count);
 
@@ -468,8 +470,13 @@ VMStatus fn_gt(VMState *s, const Instruction *ip, const Value *cvp, Value *stack
 }
 
 VMStatus fn_jmp(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
-    ip += (0 - ip->flag) * ip->wide; // ? If IP->FLAG == 1, the jump is negative (backwards).
-
+    if (ip->flag) {
+        // ? If IP->FLAG == 1, the jump is negative (backwards).
+        ip -= ip->wide;
+    } else {
+        ip += ip->wide;
+    }
+        
     TAILCALL
     return vm_dispatch(s, ip, cvp, stack);
 }
@@ -601,15 +608,19 @@ VMStatus vm_dispatch(VMState *s, const Instruction *ip, const Value *cvp, Value 
 
 
 
-VMState make_vm(const Program *program, int locals_max, uint8_t depth_max) {
+VMState make_vm(const Program *program, int locals_max, uint8_t depth_max, int16_t heap_pop_max) {
     const Chunk *entry_chunk = program->chunks.data + program->entry_id;
     Value *stack_buffer = calloc(locals_max, sizeof(Value));
 
     ObjHeap temp_heap;
-    heap_dud(&temp_heap); // TODO: Later, make VM creation take an initial heap capacity. This actually defaults to 256 object cells.
+    heap_dud(&temp_heap); // TODO: Later, make VM creation take an initial heap capacity. This actually defaults to DEFAULT_GC_CAPACITY (256) object cells.
+
+    GCState temp_gc;
+    GCState_new(&temp_gc, heap_pop_max);
 
     return (VMState) {
         .heap = temp_heap,
+        .gc = temp_gc,
         .prgm = program,
         .ip = entry_chunk->code.data,
         .cvp = entry_chunk->constants.data,
@@ -623,6 +634,7 @@ VMState make_vm(const Program *program, int locals_max, uint8_t depth_max) {
 
 void dispose_vm(VMState *s) {
     heap_del(&s->heap);
+    GCState_del(&s->gc);
 }
 
 VMStatus vm_status(const VMState *s) {
