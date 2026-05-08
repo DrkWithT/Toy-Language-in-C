@@ -32,7 +32,13 @@ A very trivial scripting language implemented in C11. Only for educational purpo
  - Add mark & sweep GC. **PENDING**
 
 #### v0.3.0
- - Add immutable strings as char list objects.
  - Add native function library for:
    - I/O
+   - Time functions
    - Math: pow(), sqrt(), clamp(), floor(), and ceil()
+
+#### v0.4.0
+ - Add immutable strings as separate, interned values.
+   - Create string type.
+   - Create string pool.
+ - Add struct types as objects.
