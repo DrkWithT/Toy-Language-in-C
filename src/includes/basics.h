@@ -5,6 +5,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+
+
+// * CONFIG MACROS: set as 0 if unneeded!
+
+#define TOYSCRIPT_DEBUG_GC_STATE 1
+
+
+
+// * UTILS:
+
 #define MAYBE_UNUSED __attribute((unused))
 
 #define FATAL_ABORT(title, file, line, msg)\
