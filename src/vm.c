@@ -29,7 +29,6 @@ static const OpFunc opcode_handlers[] = {
     fn_jmp_false,
     fn_jmp_if,
     fn_call,
-    fn_call_native,
     fn_put_callee,
     fn_ret
 };
@@ -549,6 +548,12 @@ VMStatus fn_call(VMState *s, const Instruction *ip, const Value *cvp, Value *sta
 
     if (stack[s->sp - arg_count].tag != vtag_int) {
         return vm_status_err_bad_call;
+    } else if (ip->flag) {
+        s->status = s->native_table[stack[s->sp - arg_count].data.i](s, ip->wide);
+        ip++;
+
+        TAILCALL
+        return vm_dispatch(s, ip, cvp, stack);
     }
     
     const Chunk *callee_chunk = s->prgm->chunks.data + stack[s->sp - arg_count].data.i;
@@ -572,15 +577,6 @@ VMStatus fn_call(VMState *s, const Instruction *ip, const Value *cvp, Value *sta
     if (s->depth == 0) {
         return s->status;
     }
-
-    TAILCALL
-    return vm_dispatch(s, ip, cvp, stack);
-}
-
-VMStatus fn_call_native(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
-    // ? NOTE: flag is for 0 - 255 argument count, the compiler must encode this.
-    s->status = s->native_table[ip->wide](s, ip->flag);
-    ip++;
 
     TAILCALL
     return vm_dispatch(s, ip, cvp, stack);

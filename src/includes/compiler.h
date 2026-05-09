@@ -57,6 +57,7 @@ typedef struct compiler_t {
     Token curr;
     int errors;
     int16_t chunk_idx;  // ? 0 indexes top level code, 1+ indexes a code chunk per procedure, applying only for compiling a FUN decl.
+    int16_t next_native_id;
     uint8_t saved_id;
     uint8_t flags;
 } Compiler;

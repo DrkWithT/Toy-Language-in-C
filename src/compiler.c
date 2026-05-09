@@ -23,6 +23,34 @@ int charspan_atoi(const charspan *s) {
     return result;
 }
 
+float charspan_atof(const charspan *s) {
+    static const float digit_vals[] = {0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0, 7.0f, 8.0f, 9.0f}; // ! NOTE: This uses a lookup table for digits as floats... Casting int to float is slow because of RAX <--> XMM.
+
+    float result = 0.0f;
+    float base = 1.0f;
+
+    for (int point_search_pos = 0; point_search_pos < s->length; point_search_pos++) {
+        if (s->data[point_search_pos + 1] == '.') {
+            break;
+        }
+
+        base *= 10.0f;
+    }
+
+    for (int i = 0; i < s->length; i++) {
+        const char c = s->data[i];
+
+        if (c == '.') {
+            continue;
+        }
+
+        result += digit_vals[c - '0'] * base;
+        base /= 10.0f;
+    }
+
+    return result;
+}
+
 SymbolInfo make_symbol_info(charspan name_v, int16_t id, Domain d) {
     return (SymbolInfo) {
         .name = name_v,
@@ -130,6 +158,7 @@ Compiler make_compiler() {
         },
         .errors = 0,
         .chunk_idx = 0,
+        .next_native_id = 0,
         .saved_id = 0,
         .flags = cgen_no_flags
     };
@@ -143,12 +172,12 @@ void compiler_del(Compiler *self) {
 void compiler_map_native(Compiler *self, const charspan *s) {
     SymbolInfo native_fn_info = {
         .name = *s,
-        .id = self->globals.next_global_id,
+        .id = self->next_native_id,
         .domain = symbol_native
     };
 
     symbol_table_push(&self->globals, &native_fn_info);
-    self->globals.next_global_id++;
+    self->next_native_id++;
 }
 
 int8_t compiler_match_curr(const Compiler *self, TkTag tag) {
@@ -199,6 +228,7 @@ int8_t compiler_flag_of(const Compiler *self, CodegenFlag flag) {
     case cgen_assign_to: return (self->flags & flag);
     case cgen_access_of: return (self->flags & flag) >> 1;
     case cgen_lhs_local: return (self->flags & flag) >> 2;
+    case cgen_lhs_native: return (self->flags & flag) >> 3;
     default: return 0;
     }
 }
@@ -352,7 +382,7 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
             compiler_eat_tk(self, lexer, s);
             return 1;
         case tk_true: case tk_false:
-            compiler_emit_op_flagged(self, pg, op_put_bool, curr_ref->tag == 1, 0);
+            compiler_emit_op_flagged(self, pg, op_put_bool, curr_ref->tag == tk_true, 0);
             compiler_eat_tk(self, lexer, s);
             return 1;
         case tk_integer:
@@ -360,9 +390,16 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
                 self,
                 pg,
                 &lexeme,
-                make_value_int(
-                    charspan_atoi(&lexeme)
-                )
+                make_value_int(charspan_atoi(&lexeme))
+            );
+            compiler_eat_tk(self, lexer, s);
+            break;
+        case tk_real:
+            temp_locus = compiler_record_constant(
+                self,
+                pg,
+                &lexeme,
+                make_value_real(charspan_atof(&lexeme))
             );
             compiler_eat_tk(self, lexer, s);
             break;
@@ -499,12 +536,8 @@ int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program
 
     compiler_eat_tk(self, lexer, s);
 
-    if (compiler_flag_of(self, cgen_lhs_native)) {
-        compiler_emit_op_unflagged(self, pg, op_call_native, arg_count);
-        compiler_flag_off(self, cgen_lhs_native);
-    } else {
-        compiler_emit_op_unflagged(self, pg, op_call, arg_count);
-    }
+    compiler_emit_op_flagged(self, pg, op_call, compiler_flag_of(self, cgen_lhs_native), arg_count);
+    compiler_flag_off(self, cgen_lhs_native);
 
     return 1;
 }

@@ -7,6 +7,8 @@
 #include "compiler.h"
 #include "vm.h"
 
+#include "natives.h"
+
 
 
 #define VM_STACK_MAX 1024
@@ -49,7 +51,19 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "-=", .tag = tk_os_minus_equals}
 };
 
+// ? Stores a corresponding native function per index, 1-to-1 against toyscript_native_names.
+static const NativeFn toyscript_natives[] = {
+    native_print,
+    // TODO: add more.
+};
 
+// ? Stores name to position info for native functions so that the compiler properly generates native calls.
+static const charspan toyscript_native_names[] = {
+    (charspan) {
+        .data = "print",
+        .length = 5
+    }, // TODO: add more.
+};
 
 mystr read_file(const char *fname) {
     FILE *fs = fopen(fname, "r");
@@ -139,6 +153,8 @@ int main(int argc, char *argv[]) {
 
     Lexer tokenizer = make_lexer(&source_view, special_lexicals);
     Compiler compiler = make_compiler();
+    compiler_map_native(&compiler, &toyscript_native_names[0]);
+    // compiler_map_native(&compiler, &toyscript_native_names[1]); // TODO: add more library functions for time, math, I/O.
 
     Program program;
     program_dud(&program);
@@ -155,7 +171,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    VMState vm = make_vm(&program, VM_STACK_MAX, VM_DEPTH_MAX, DEFAULT_HEAP_CAPACITY);
+    VMState vm = make_vm(&program, toyscript_natives, VM_STACK_MAX, VM_DEPTH_MAX, DEFAULT_HEAP_CAPACITY);
 
     struct timeval begin, end;
     gettimeofday(&begin, NULL);
@@ -166,7 +182,10 @@ int main(int argc, char *argv[]) {
 
     puts("Result:");
     print_value(&ans);
-    printf("\nDONE in %d ms\n", abs(end.tv_usec / 1000 - begin.tv_usec / 1000));
+
+    const int end_usec = end.tv_sec * 1000000 + end.tv_usec;
+    const int begin_usec = begin.tv_sec * 1000000 + begin.tv_usec;
+    printf("\nDONE in %d ms\n", abs(end_usec - begin_usec) / 1000);
 
     dispose_vm(&vm);
     program_del(&program);
