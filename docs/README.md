@@ -29,16 +29,18 @@ A very trivial scripting language implemented in C11. Only for educational purpo
  - Add object base. **OK**
  - Add object heap. **OK**
  - Add simple, fixed size list objects. **OK**
- - Add mark & sweep GC. **PENDING**
+ - Add mark & sweep GC. **OK**
 
 #### v0.3.0
- - Add native function library for:
-   - I/O
-   - Time functions
+ - Add native function library for: **WIP**
+   - I/O: print(...args)
+   - Time functions: now()
    - Math: pow(), sqrt(), clamp(), floor(), and ceil()
 
 #### v0.4.0
  - Add immutable strings as separate, interned values.
    - Create string type.
    - Create string pool.
- - Add struct types as objects.
+   - Add `FUN readln(delim) -> string`.
+ - Add simple structs and impls??
+   - Add `mut` / not-mut members, using runtime mutability checks.
