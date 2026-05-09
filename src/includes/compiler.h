@@ -16,7 +16,8 @@ int charspan_atoi(const charspan *s);
 typedef enum symbol_domain_t : uint8_t {
     symbol_constant,
     symbol_local,
-    symbol_func
+    symbol_func,
+    symbol_native
 } Domain;
 
 typedef struct symbol_info_t {
@@ -46,6 +47,7 @@ typedef enum bcgen_flag_t : uint8_t {
     cgen_assign_to = 0b0001,    // ? Is the compiler within a variable init / assignment's LHS?
     cgen_access_of = 0b0010,    // ? Is the compiler within a member access expression LHS?
     cgen_lhs_local = 0b0100,    // ? Has the compiler just consumed only an assignment LHS name?
+    cgen_lhs_native = 0b1000    // ? Has the compiler consumed a native function's name in the LHS?
 } CodegenFlag;
 
 typedef struct compiler_t {
@@ -55,12 +57,14 @@ typedef struct compiler_t {
     Token curr;
     int errors;
     int16_t chunk_idx;  // ? 0 indexes top level code, 1+ indexes a code chunk per procedure, applying only for compiling a FUN decl.
-    uint8_t saved_local_id;
+    uint8_t saved_id;
     uint8_t flags;
 } Compiler;
 
 Compiler make_compiler();
 void compiler_del(Compiler *self);
+
+void compiler_map_native(Compiler *self, const charspan *s);
 
 int8_t compiler_match_curr(const Compiler *self, TkTag tag);
 int8_t compiler_match_prev(const Compiler *self, TkTag tag);

@@ -130,7 +130,7 @@ Compiler make_compiler() {
         },
         .errors = 0,
         .chunk_idx = 0,
-        .saved_local_id = 0,
+        .saved_id = 0,
         .flags = cgen_no_flags
     };
 }
@@ -138,6 +138,17 @@ Compiler make_compiler() {
 void compiler_del(Compiler *self) {
     symbol_table_del(&self->globals);
     symbol_table_del(&self->locals);
+}
+
+void compiler_map_native(Compiler *self, const charspan *s) {
+    SymbolInfo native_fn_info = {
+        .name = *s,
+        .id = self->globals.next_global_id,
+        .domain = symbol_native
+    };
+
+    symbol_table_push(&self->globals, &native_fn_info);
+    self->globals.next_global_id++;
 }
 
 int8_t compiler_match_curr(const Compiler *self, TkTag tag) {
@@ -389,7 +400,7 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
     // todo: add case for assignment LHS's of table accesses...
     if (compiler_flag_of(self, cgen_assign_to) && temp_locus->domain == symbol_local) {
         compiler_flag_on(self, cgen_lhs_local);
-        self->saved_local_id = temp_locus->id;
+        self->saved_id = temp_locus->id;
         return 1;
     }
 
@@ -401,8 +412,15 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
             compiler_emit_op_unflagged(self, pg, op_load_local, temp_locus->id);
             break;
         case symbol_func:
-        default:
+            // ? NOTE: The pushed ID is for a global procedure, VM or native.
             compiler_emit_op_unflagged(self, pg, op_load_imm_gid, temp_locus->id);
+            break;
+        case symbol_native:
+            compiler_flag_on(self, cgen_lhs_native);
+            // ? NOTE: The pushed ID is for a global procedure, VM or native.
+            compiler_emit_op_unflagged(self, pg, op_load_imm_gid, temp_locus->id);
+            break;
+        default:
             break;
     }
 
@@ -421,7 +439,7 @@ int8_t compiler_do_lhs(Compiler *self, Lexer *lexer, const charspan *s, Program 
 
     const int8_t lhs_is_in_assign_lhs = compiler_flag_of(self, cgen_lhs_local);
     if (lhs_is_in_assign_lhs) {
-        compiler_emit_op_flagged(self, pg, op_load_local, 0, self->saved_local_id);
+        compiler_emit_op_flagged(self, pg, op_load_local, 0, self->saved_id);
         compiler_flag_off(self, cgen_lhs_local);
     }
 
@@ -480,7 +498,13 @@ int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program
     }
 
     compiler_eat_tk(self, lexer, s);
-    compiler_emit_op_unflagged(self, pg, op_call, arg_count);
+
+    if (compiler_flag_of(self, cgen_lhs_native)) {
+        compiler_emit_op_unflagged(self, pg, op_call_native, arg_count);
+        compiler_flag_off(self, cgen_lhs_native);
+    } else {
+        compiler_emit_op_unflagged(self, pg, op_call, arg_count);
+    }
 
     return 1;
 }
@@ -819,7 +843,7 @@ int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Pr
 
         // ? If we have consumed only a name = <value>, emit a simple update of that local slot.
         if (compiler_flag_of(self, cgen_lhs_local)) {
-            compiler_emit_op_flagged(self, pg, op_store_local, 0, self->saved_local_id);
+            compiler_emit_op_flagged(self, pg, op_store_local, 0, self->saved_id);
             compiler_flag_off(self, cgen_lhs_local);
         } else if (compiler_flag_of(self, cgen_access_of)) {
             compiler_emit_op(self, pg, op_set_idx);
