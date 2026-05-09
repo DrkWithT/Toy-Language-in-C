@@ -25,6 +25,7 @@ static const char *opcode_names[] = {
     "op_jmp_false",
     "op_jmp_if",
     "op_call",
+    "op_call_native",
     "op_put_callee",
     "op_ret"
 };
