@@ -23,15 +23,16 @@ typedef enum obj_flags_t : uint8_t {
     oflag_iterable = 0b0010
 } ObjFlag;
 
+// ? This stores type_info to discern how to downcast ObjBase --> List, etc.
 typedef struct obj_head_t {
     ObjTag tag;         // ? enclosed object's discriminator
     uint8_t flags;      // ? object's metadata / flags
 } ObjHead;
 
-// ? tiny interface of objects: destruct, test truthiness, get / set values
+// ? Stores a tiny interface of objects: destruct, test truthiness, get / set values... all in a shoddy vtable.
 typedef struct obj_base_t {
     ObjHead meta;
-    void (*del) (void *self);
+    void (*del) (void *self); // ! This may seem to "leak" objects in list for example, but the GC will catch these anyhow.
     int8_t (*as_bool) (const void *self);
     Value (*get_v) (const void *self, Value key);
     int8_t (*set_v) (void *self, Value key, Value item);

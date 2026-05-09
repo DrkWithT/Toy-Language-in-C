@@ -13,7 +13,7 @@ void print_value(const Value *v) {
         case vtag_bool: printf("%s", (v->data.byte) ? "TRUE" : "FALSE"); break;
         case vtag_int: printf("%d", v->data.i); break;
         case vtag_real: printf("%f", v->data.f); break;
-        default: printf("(unknown)");
+        default: break;
     }
 }
 

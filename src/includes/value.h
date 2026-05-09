@@ -86,8 +86,6 @@ void Value_copy(MAYBE_UNUSED Value *ins, MAYBE_UNUSED const Value *other);
 void Value_move(MAYBE_UNUSED Value *ins, MAYBE_UNUSED Value *other);
 void Value_del(MAYBE_UNUSED Value *ins);
 
-// int value_as_strid(const Value *v);
-// int value_as_mttid(const Value *v);
 void print_value(const Value *v);
 
 STUB_VEC(Value)
