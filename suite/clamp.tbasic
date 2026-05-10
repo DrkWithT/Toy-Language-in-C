@@ -1,0 +1,11 @@
+`test native clamp procedure`
+
+LET low : 10, high : 20;
+
+LET x : clamp(5, low, high);
+LET y : clamp(22, low, high);
+LET z : clamp(16, low, high);
+
+print(x, y, z);
+
+RET 0;
