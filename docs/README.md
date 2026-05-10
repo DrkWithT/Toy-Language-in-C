@@ -32,9 +32,9 @@ A very trivial scripting language implemented in C11. Only for educational purpo
  - Add mark & sweep GC. **OK**
 
 #### v0.3.0
- - Add native function library for: **WIP**
+ - Add native function library for: **OK**
    - I/O: print(...args)
-   - Math: powf(), sqrtf(), clamp(), floor(), and ceil()
+   - Math: powf(), sqrtf(), clamp(), floorf(), and ceilf()
 
 #### v0.4.0
  - Add immutable strings as separate, interned values.

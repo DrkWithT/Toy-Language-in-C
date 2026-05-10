@@ -546,14 +546,14 @@ VMStatus fn_jmp_if(VMState *s, const Instruction *ip, const Value *cvp, Value *s
 VMStatus fn_call(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
     const int16_t arg_count = ip->wide;
 
-    if (stack[s->sp - arg_count].tag != vtag_int) {
-        return vm_status_err_bad_call;
-    } else if (ip->flag) {
+    if (ip->flag && stack[s->sp - arg_count].tag == vtag_int) {
         s->status = s->native_table[stack[s->sp - arg_count].data.i](s, ip->wide);
         ip++;
 
         TAILCALL
         return vm_dispatch(s, ip, cvp, stack);
+    } else if (stack[s->sp - arg_count].tag != vtag_int) {
+        return vm_status_err_bad_call;
     }
     
     const Chunk *callee_chunk = s->prgm->chunks.data + stack[s->sp - arg_count].data.i;

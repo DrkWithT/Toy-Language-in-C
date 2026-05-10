@@ -8,6 +8,7 @@
 
 
 int charspan_atoi(const charspan *s);
+float charspan_atof(const charspan *s);
 
 
 
@@ -67,6 +68,7 @@ void compiler_del(Compiler *self);
 
 void compiler_map_native(Compiler *self, const charspan *s);
 
+int8_t compiler_peek_past_spaces(const Compiler *self, Lexer *l, const charspan *source, char c);
 int8_t compiler_match_curr(const Compiler *self, TkTag tag);
 int8_t compiler_match_prev(const Compiler *self, TkTag tag);
 Token compiler_advance_tk(Compiler *self, Lexer *lexer, const charspan *s);

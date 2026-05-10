@@ -54,6 +54,11 @@ static const LexItem special_lexicals[] = {
 // ? Stores a corresponding native function per index, 1-to-1 against toyscript_native_names.
 static const NativeFn toyscript_natives[] = {
     native_print,
+    native_powf,
+    native_sqrtf,
+    native_clampf,
+    native_floorf,
+    native_ceilf,
     // TODO: add more.
 };
 
@@ -62,7 +67,27 @@ static const charspan toyscript_native_names[] = {
     (charspan) {
         .data = "print",
         .length = 5
-    }, // TODO: add more.
+    },
+    (charspan) {
+        .data = "powf",
+        .length = 4
+    },
+    (charspan) {
+        .data = "sqrtf",
+        .length = 5
+    },
+    (charspan) {
+        .data = "clampf",
+        .length = 6
+    },
+    (charspan) {
+        .data = "floorf",
+        .length = 6
+    },
+    (charspan) {
+        .data = "ceilf",
+        .length = 5
+    },
 };
 
 mystr read_file(const char *fname) {
@@ -153,8 +178,14 @@ int main(int argc, char *argv[]) {
 
     Lexer tokenizer = make_lexer(&source_view, special_lexicals);
     Compiler compiler = make_compiler();
+
+    // TODO: add more library functions for time, math, I/O.
     compiler_map_native(&compiler, &toyscript_native_names[0]);
-    // compiler_map_native(&compiler, &toyscript_native_names[1]); // TODO: add more library functions for time, math, I/O.
+    compiler_map_native(&compiler, &toyscript_native_names[1]);
+    compiler_map_native(&compiler, &toyscript_native_names[2]);
+    compiler_map_native(&compiler, &toyscript_native_names[3]);
+    compiler_map_native(&compiler, &toyscript_native_names[4]);
+    compiler_map_native(&compiler, &toyscript_native_names[5]);
 
     Program program;
     program_dud(&program);

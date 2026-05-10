@@ -4,7 +4,7 @@
 
 
 #include <stdio.h>
-// #include "mystr.h"
+#include <math.h>
 #include "obj_list.h"
 #include "vm.h"
 
@@ -56,6 +56,94 @@ static inline VMStatus native_print(VMState *s, int argc) {
     printf("\n");
 
     s->stack[callee_bp] = make_value_none();
+    s->sp = callee_bp;
+
+    return vm_status_pending;
+}
+
+static inline VMStatus native_powf(VMState *s, int argc) {
+    const int callee_bp = s->sp - argc;
+    const Value a0 = s->stack[callee_bp + 1];
+    const Value a1 = s->stack[callee_bp + 2];
+
+    if (a0.tag != vtag_real || a1.tag != vtag_real) {
+        s->stack[callee_bp] = make_value_real(NAN);
+    } else {
+        s->stack[callee_bp] = make_value_real(powf(a0.data.f, a1.data.f));
+    }
+
+    s->sp = callee_bp;
+
+    return vm_status_pending;
+}
+
+static inline VMStatus native_sqrtf(VMState *s, int argc) {
+    const int callee_bp = s->sp - argc;
+    const Value a0 = s->stack[callee_bp + 1];
+
+    if (a0.tag != vtag_real) {
+        s->stack[callee_bp] = make_value_real(NAN);
+    } else {
+        s->stack[callee_bp] = make_value_real(sqrtf(a0.data.f));
+    }
+
+    s->sp = callee_bp;
+
+    return vm_status_pending;
+}
+
+static inline float clamp_f32(float v, float low, float high) {
+    if (v < low) {
+        return low;
+    } else if (v > high) {
+        return high;
+    } else {
+        return v;
+    }
+}
+
+static inline VMStatus native_clampf(VMState *s, int argc) {
+    const int callee_bp = s->sp - argc;
+    const Value a0 = s->stack[callee_bp + 1];
+    const Value a1 = s->stack[callee_bp + 2];
+    const Value a2 = s->stack[callee_bp + 3];
+
+    if (a0.tag != vtag_real || a1.tag != vtag_real || a2.tag != vtag_real) {
+        s->stack[callee_bp] = make_value_real(NAN);
+    } else {
+        s->stack[callee_bp] = make_value_real(clamp_f32(a0.data.f, a1.data.f, a2.data.f));
+    }
+
+    s->sp = callee_bp;
+
+    return vm_status_pending;
+}
+
+static inline VMStatus native_floorf(VMState *s, int argc) {
+    const int callee_bp = s->sp - argc;
+    const Value a0 = s->stack[callee_bp + 1];
+
+    if (a0.tag != vtag_real) {
+        s->stack[callee_bp] = make_value_real(NAN);
+    } else {
+        s->stack[callee_bp] = make_value_real(floorf(a0.data.f));
+    }
+
+    s->sp = callee_bp;
+
+    return vm_status_pending;
+}
+
+static inline VMStatus native_ceilf(VMState *s, int argc) {
+    const int callee_bp = s->sp - argc;
+    const Value a0 = s->stack[callee_bp + 1];
+
+    if (a0.tag != vtag_real) {
+        s->stack[callee_bp] = make_value_real(NAN);
+    } else {
+        s->stack[callee_bp] = make_value_real(ceilf(a0.data.f));
+    }
+
     s->sp = callee_bp;
 
     return vm_status_pending;

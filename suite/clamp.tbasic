@@ -1,10 +1,12 @@
 `test native clamp procedure`
 
-LET low : 10, high : 20;
+LET low : 10.0, high : 20.0;
 
-LET x : clamp(5, low, high);
-LET y : clamp(22, low, high);
-LET z : clamp(16, low, high);
+LET x : clampf(9.75, low, high);
+LET y : clampf(20.5, low, high);
+LET z : clampf(19.5, low, high);
+
+`low's value, high's value, 19.5`
 
 print(x, y, z);
 

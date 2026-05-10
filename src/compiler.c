@@ -180,6 +180,21 @@ void compiler_map_native(Compiler *self, const charspan *s) {
     self->next_native_id++;
 }
 
+int8_t compiler_peek_past_spaces(const Compiler *self, Lexer *l, const charspan *source, char c) {
+    int8_t found = 0;
+
+    for (int i = self->curr.begin + self->curr.length; i < source->length; i++) {
+        if (is_space_symbol(source->data[i])) {
+            ;
+        } else {
+            found = source->data[i] == c;
+            break;
+        }
+    }
+
+    return found;
+}
+
 int8_t compiler_match_curr(const Compiler *self, TkTag tag) {
     return self->curr.tag == tag;
 }
@@ -435,6 +450,12 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
     }
 
     // todo: add case for assignment LHS's of table accesses...
+    if (self->curr.tag == tk_os_bind_equals) {
+        compiler_flag_on(self, cgen_assign_to);
+    } else {
+        compiler_flag_off(self, cgen_assign_to);
+    }
+
     if (compiler_flag_of(self, cgen_assign_to) && temp_locus->domain == symbol_local) {
         compiler_flag_on(self, cgen_lhs_local);
         self->saved_id = temp_locus->id;
