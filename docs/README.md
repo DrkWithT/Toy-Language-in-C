@@ -34,13 +34,13 @@ A very trivial scripting language implemented in C11. Only for educational purpo
 #### v0.3.0
  - Add native function library for: **WIP**
    - I/O: print(...args)
-   - Time functions: now()
-   - Math: pow(), sqrt(), clamp(), floor(), and ceil()
+   - Math: powf(), sqrtf(), clamp(), floor(), and ceil()
 
 #### v0.4.0
  - Add immutable strings as separate, interned values.
    - Create string type.
    - Create string pool.
    - Add `FUN readln(delim) -> string`.
+   - Add `FUN fopen(), fclose(), fgetc()`
  - Add simple structs and impls??
    - Add `mut` / not-mut members, using runtime mutability checks.
