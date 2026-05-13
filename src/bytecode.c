@@ -10,6 +10,7 @@ static const char *opcode_names[] = {
     "op_put_konst",
     "op_dup",
     "op_pop",
+    "op_load_string",
     "op_mk_list",
     "op_get_idx",
     "op_set_idx",
@@ -105,12 +106,16 @@ void dump_program(const Program *pg) {
 
 IMPL_VEC(Chunk)
 
+IMPL_VEC(mystr)
+
 void program_dud(Program *self) {
     AnyVec_Chunk_dud(&self->chunks);
+    AnyVec_mystr_dud(&self->strings);
     self->entry_id = 0;
 }
 
 void program_del(Program *self) {
-    AnyVec_Chunk_dud(&self->chunks);
+    AnyVec_Chunk_del(&self->chunks);
+    AnyVec_mystr_del(&self->strings);
     self->entry_id = -1;
 }

@@ -2,6 +2,7 @@
 #define TOYSCRIPT_BYTECODE_H
 
 #include <stdint.h>
+#include "mystr.h"
 #include "value.h"
 #include "vec.h"
 
@@ -30,6 +31,8 @@ STUB_VEC(Instruction)
 
 STUB_VEC(Chunk)
 
+STUB_VEC(mystr)
+
 typedef enum vm_opcode_t : uint8_t {
     op_nop,
     op_put_none,
@@ -40,6 +43,7 @@ typedef enum vm_opcode_t : uint8_t {
     op_put_k,
     op_dup,
     op_pop,
+    op_load_string,
     op_mk_list,
     op_get_idx,
     op_set_idx,
@@ -72,6 +76,7 @@ typedef struct code_chunk_t {
 
 typedef struct vm_program_t {
     AnyVec_Chunk chunks;
+    AnyVec_mystr strings;
     int entry_id;
 } Program;
 
