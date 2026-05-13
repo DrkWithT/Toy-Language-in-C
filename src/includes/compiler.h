@@ -18,7 +18,8 @@ typedef enum symbol_domain_t : uint8_t {
     symbol_constant,
     symbol_local,
     symbol_func,
-    symbol_native
+    symbol_native,
+    symbol_string,
 } Domain;
 
 typedef struct symbol_info_t {
@@ -59,6 +60,7 @@ typedef struct compiler_t {
     int errors;
     int16_t chunk_idx;  // ? 0 indexes top level code, 1+ indexes a code chunk per procedure, applying only for compiling a FUN decl.
     int16_t next_native_id;
+    int16_t next_str_id;
     uint8_t saved_id;
     uint8_t flags;
 } Compiler;
@@ -87,6 +89,7 @@ const SymbolInfo *compiler_resolve_name(const Compiler *self, const charspan *s)
 const SymbolInfo *compiler_record_function(Compiler *self, Program *pg, const charspan *s, int chunk_id);
 const SymbolInfo *compiler_record_local(Compiler *self, Program *pg, const charspan *s);
 const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const charspan *s_symbol, Value v);
+const SymbolInfo *compiler_record_string(Compiler *self, Program *pg, const charspan *s);
 
 int8_t compiler_do_list(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);

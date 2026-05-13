@@ -159,6 +159,7 @@ Compiler make_compiler() {
         .errors = 0,
         .chunk_idx = 0,
         .next_native_id = 0,
+        .next_str_id = 0,
         .saved_id = 0,
         .flags = cgen_no_flags
     };
@@ -287,8 +288,6 @@ size_t compiler_emit_op_flagged(Compiler *self, Program *pg, Opcode op, uint8_t 
     return AnyVec_Instruction_len(code_ref);
 }
 
-
-
 const SymbolInfo *compiler_resolve_name(const Compiler *self, const charspan *s) {
     const SymbolInfo *temp = symbol_table_find(&self->globals, s);
 
@@ -350,6 +349,26 @@ const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const ch
     };
 
     return symbol_table_push(&self->locals, &new_info);
+}
+
+const SymbolInfo *compiler_record_string(Compiler *self, Program *pg, const charspan *s) {
+    mystr str;
+    mystr_append_charspan(&str, s, s->length);
+    mystr_append_raw(&str, "\"", 1);
+
+    SymbolInfo new_info = {
+        .name = (charspan) {
+            .data = str.data,
+            .length = str.length
+        },
+        .id = self->next_str_id,
+        .domain = symbol_string
+    };
+
+    self->next_str_id++;
+    AnyVec_mystr_push(&pg->strings, &str);
+
+    return symbol_table_push(&self->globals, &new_info);
 }
 
 
@@ -418,6 +437,13 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
             );
             compiler_eat_tk(self, lexer, s);
             break;
+        case tk_string:
+            temp_locus = compiler_record_string(
+                self,
+                pg,
+                &lexeme
+            );
+            compiler_eat_tk(self, lexer, s);
         case tk_identifier:
             temp_locus = compiler_resolve_name(
                 self,
@@ -478,6 +504,9 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
             // ? NOTE: The pushed ID is for a global procedure, VM or native.
             compiler_emit_op_unflagged(self, pg, op_load_imm_gid, temp_locus->id);
             break;
+        case symbol_string:
+            compiler_emit_op_unflagged(self, pg, op_load_string, temp_locus->id);
+            break;
         default:
             break;
     }
@@ -495,10 +524,10 @@ int8_t compiler_do_lhs(Compiler *self, Lexer *lexer, const charspan *s, Program 
         return 1;
     }
 
-    const int8_t lhs_is_in_assign_lhs = compiler_flag_of(self, cgen_lhs_local);
-    if (lhs_is_in_assign_lhs) {
+    if (compiler_flag_of(self, cgen_lhs_local)) {
         compiler_emit_op_flagged(self, pg, op_load_local, 0, self->saved_id);
         compiler_flag_off(self, cgen_lhs_local);
+        compiler_flag_on(self, cgen_access_of);
     }
 
     while (!compiler_match_curr(self, tk_eof)) {
@@ -512,14 +541,12 @@ int8_t compiler_do_lhs(Compiler *self, Lexer *lexer, const charspan *s, Program 
             return 0;
         }
 
-        if (compiler_match_curr(self, tk_os_access_of)) {
-            compiler_emit_op(self, pg, op_get_idx);
-        } else if (lhs_is_in_assign_lhs) {
-            compiler_flag_on(self, cgen_access_of);
-        } else {
+        if (!compiler_flag_of(self, cgen_assign_to) || !compiler_match_curr(self, tk_os_bind_equals)) {
             compiler_emit_op(self, pg, op_get_idx);
         }
     }
+
+    compiler_flag_on(self, cgen_access_of);
 
     return 1;
 }
@@ -862,6 +889,7 @@ int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Progra
 int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
     compiler_eat_tk(self, lexer, s); // ? skip RET
 
+    compiler_flag_off(self, cgen_assign_to);
     if (!compiler_do_or(self, lexer, s, pg)) {
         fprintf(stderr, "Note: See return-result expression at line %d.\n", self->curr.line);
         return 0;
@@ -903,7 +931,7 @@ int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Pr
             compiler_emit_op(self, pg, op_set_idx);
             compiler_flag_off(self, cgen_access_of);
         } else {
-            compiler_warn(self, "Invalid LHS of assignment, expected a name or key-access expression around line %d.\n", &self->prev, s);
+            compiler_warn(self, "Invalid LHS of assignment, expected a name or key-access expression.\n", &self->prev, s);
             // return 0;
         }
     }
