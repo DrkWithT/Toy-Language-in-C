@@ -14,6 +14,7 @@ static const OpFunc opcode_handlers[] = {
     fn_put_k,
     fn_dup,
     fn_pop,
+    fn_load_string,
     fn_mk_list,
     fn_get_idx,
     fn_set_idx,
@@ -105,6 +106,15 @@ VMStatus fn_dup(VMState *s, const Instruction *ip, const Value *cvp, Value *stac
 
 VMStatus fn_pop(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
     s->sp -= ip->flag;
+    ip++;
+
+    TAILCALL
+    return vm_dispatch(s, ip, cvp, stack);
+}
+
+VMStatus fn_load_string(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
+    s->sp++;
+    stack[s->sp] = make_value_str(ip->wide);
     ip++;
 
     TAILCALL

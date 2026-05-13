@@ -35,6 +35,7 @@ VMStatus fn_store_local(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_put_k(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_dup(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_pop(VMState *, const Instruction *, const Value *, Value *);
+VMStatus fn_load_string(VMState *s, const Instruction *ip, const Value *cvp, Value *stack);
 VMStatus fn_mk_list(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_get_idx(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_set_idx(VMState *, const Instruction *, const Value *, Value *);

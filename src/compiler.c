@@ -353,6 +353,7 @@ const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const ch
 
 const SymbolInfo *compiler_record_string(Compiler *self, Program *pg, const charspan *s) {
     mystr str;
+    mystr_res(&str, 10);
     mystr_append_charspan(&str, s, s->length);
     mystr_append_raw(&str, "\"", 1);
 
@@ -444,6 +445,7 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
                 &lexeme
             );
             compiler_eat_tk(self, lexer, s);
+            break;
         case tk_identifier:
             temp_locus = compiler_resolve_name(
                 self,
