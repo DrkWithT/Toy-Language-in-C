@@ -26,6 +26,14 @@ static inline void native_print_object(const ObjHeap *heap, int16_t id) {
     }
 }
 
+static inline void native_print_str(const mystr *strings, int id) {
+    if (id < 0) {
+        printf("'...'");
+    } else {
+        printf("%s", strings[id].data);
+    }
+}
+
 /*
  * Invariants: 
  * 1. Returns NONE in STACK[CALLEE_BP].
@@ -46,6 +54,8 @@ static inline VMStatus native_print(VMState *s, int argc) {
 
         if (arg_ref->tag == vtag_obj_id) {
             native_print_object(&s->heap, arg_ref->data.obj_id);
+        } else if (arg_ref->tag == vtag_strid) {
+            native_print_str(s->prgm->strings.data, arg_ref->data.i);
         } else {
             print_value(arg_ref);
         }
