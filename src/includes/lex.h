@@ -20,6 +20,7 @@ typedef enum token_tag_t {
     tk_false,
     tk_integer,
     tk_real,
+    tk_string,
     tk_os_times,
     tk_os_slash,
     tk_os_plus,
