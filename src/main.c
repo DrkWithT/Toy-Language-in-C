@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (show_version) {
-        printf("\x1b[1;33m%s\x1b[0m\n\nv0.2.0\t By: DrkWithT (GitHub)", project_name);
+        printf("\x1b[1;33m%s\x1b[0m\n\nv0.4.1\t By: DrkWithT (GitHub)", project_name);
         return 0;
     } else if (show_help) {
         printf("usage: ./toyscript [-h | -v | [-d | -r] <file name>]\n-h: help\n-v: show version\n");

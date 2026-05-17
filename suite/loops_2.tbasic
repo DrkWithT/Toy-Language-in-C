@@ -7,7 +7,7 @@ FUN testA(x):
         IF i == (x / 2):
             BREAK;
         END ELSE:
-            i = i + 1;
+            i := i + 1;
         END
     END
 
@@ -15,15 +15,15 @@ FUN testA(x):
 END
 
 FUN testB(y):
-    LET j : 0, old : 0;
+    LET j : y, old : 0;
 
     WHILE j > 0:
         IF j == y / 2:
-            old = j;
-            j = j / 2;
+            old := j;
+            j := j / 2;
             CONTINUE;
         END ELSE:
-            j = j - 1;
+            j := j - 1;
         END
     END
 

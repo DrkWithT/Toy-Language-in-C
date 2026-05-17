@@ -124,6 +124,8 @@ void symbol_table_clear(SymbolTable *self) {
             .domain = symbol_constant
         };
     }
+
+    self->next_local_id = 0;
 }
 
 const SymbolInfo *symbol_table_find(const SymbolTable *symbols, const charspan *s) {
@@ -621,6 +623,8 @@ int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program
         return 0;
     }
 
+    int8_t outer_callee_is_native = compiler_flag_of(self, cgen_lhs_native);
+
     if (!compiler_match_curr(self, tk_lparen)) {
         return 1;
     }
@@ -630,6 +634,8 @@ int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program
         if (compiler_match_curr(self, tk_rparen)) {
             break;
         }
+
+        compiler_flag_off(self, cgen_lhs_native);
 
         if (!compiler_do_compare(self, lexer, s, pg)) {
             fprintf(stderr, "Note: See call at line %d.\n", callee_name.line);
@@ -644,6 +650,10 @@ int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program
     }
 
     compiler_eat_tk(self, lexer, s);
+
+    if (outer_callee_is_native) {
+        compiler_flag_on(self, cgen_lhs_native);
+    }
 
     compiler_emit_op_flagged(self, pg, op_call, compiler_flag_of(self, cgen_lhs_native), arg_count);
     compiler_flag_off(self, cgen_lhs_native);
@@ -992,11 +1002,12 @@ int8_t compiler_do_for(Compiler *self, Lexer *lexer, const charspan *s, Program 
     }
     compiler_eat_tk(self, lexer, s);
 
+    const int counter_name_line = self->prev.line;
     charspan counter_name = {
-        .data = s->data + self->curr.begin,
-        .length = self->curr.length
+        .data = s->data + self->prev.begin,
+        .length = self->prev.length
     };
-    const SymbolInfo *counter_info = compiler_record_local(self, pg, &counter_name);
+    const SymbolInfo *counter_info = compiler_resolve_name(self, &counter_name);
 
     if (!compiler_match_curr(self, tk_colon)) {
         compiler_warn(self, "Expected ':' after counter variable in C-style FOR loop here.", &self->curr, s);
@@ -1013,7 +1024,21 @@ int8_t compiler_do_for(Compiler *self, Lexer *lexer, const charspan *s, Program 
         compiler_leave_loop(self);
         return 0;
     }
-    compiler_emit_op_unflagged(self, pg, op_store_local, counter_info->id);
+
+    if (counter_info->domain == symbol_local) {
+        compiler_emit_op_unflagged(self, pg, op_store_local, counter_info->id);
+    } else {
+        compiler_warn(self, "Invalid name of loop counter around here- shadows a similar non-local name.", &self->prev, s);
+        fprintf(stderr, "\tNote: see line %d.\n", counter_name_line);
+        return 0;
+    }
+
+    if (!compiler_match_curr(self, tk_comma)) {
+        compiler_warn(self, "Expected ',' after counter in FOR loop here.", &self->curr, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->curr.line);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
 
     const int loop_begin_pos = pg->chunks.data[self->chunk_idx].code.length;
     if (!compiler_do_or(self, lexer, s, pg)) {
@@ -1024,6 +1049,13 @@ int8_t compiler_do_for(Compiler *self, Lexer *lexer, const charspan *s, Program 
     }
     const int loop_jump_out_pos = pg->chunks.data[self->chunk_idx].code.length;
     compiler_emit_op_unflagged(self, pg, op_jmp_false, 0);
+
+    if (!compiler_match_curr(self, tk_comma)) {
+        compiler_warn(self, "Expected ',' after check in FOR loop here.", &self->curr, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->curr.line);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
 
     const int loop_skip_update_pos = pg->chunks.data[self->chunk_idx].code.length;
     compiler_emit_op_unflagged(self, pg, op_jmp, 0);
@@ -1087,6 +1119,13 @@ int8_t compiler_do_break(Compiler *self, Lexer *lexer, const charspan *s, Progra
         return 0;
     }
 
+    if (!compiler_match_curr(self, tk_semicolon)) {
+        compiler_warn(self, "Expected a ';' closing a 'BREAK' statement here.", &self->prev, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->prev.line);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
+
     const int break_bc_pos = pg->chunks.data[self->chunk_idx].code.length;
     compiler_track_break_pos(self, break_bc_pos);
     compiler_emit_op_unflagged(self, pg, op_jmp, 0);
@@ -1103,8 +1142,15 @@ int8_t compiler_do_continue(Compiler *self, Lexer *lexer, const charspan *s, Pro
         return 0;
     }
 
-    const int break_bc_pos = pg->chunks.data[self->chunk_idx].code.length;
-    compiler_track_break_pos(self, break_bc_pos);
+    if (!compiler_match_curr(self, tk_semicolon)) {
+        compiler_warn(self, "Expected a ';' closing a 'BREAK' statement here.", &self->prev, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->prev.line);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    const int continue_bc_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_track_continue_pos(self, continue_bc_pos);
     compiler_emit_op_unflagged(self, pg, op_jmp, 0);
 
     return 1;

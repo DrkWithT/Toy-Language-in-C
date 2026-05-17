@@ -96,7 +96,7 @@ void AnyVec##_##type##_del(AnyVec##_##type *self) {\
 }\
 \
 int8_t AnyVec##_##type##_empty(AnyVec##_##type *self) {\
-    return self->data != NULL || self->length == 0;\
+    return self->data == NULL || self->length == 0;\
 }\
 \
 size_t AnyVec##_##type##_len(const AnyVec##_##type *self) {\
