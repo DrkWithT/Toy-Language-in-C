@@ -11,6 +11,9 @@ typedef enum token_tag_t {
     tk_keyword_if,
     tk_keyword_else,
     tk_keyword_while,
+    tk_keyword_for,
+    tk_keyword_break,
+    tk_keyword_continue,
     tk_keyword_ret,
     tk_keyword_fun,
     tk_keyword_end,
@@ -34,10 +37,6 @@ typedef enum token_tag_t {
     tk_os_or,
     tk_os_bind_equals,  // ? `:=` is for mutating a variable
     tk_os_access_of,    // ? `::` for accessing an item by key or index
-    tk_os_times_equals,
-    tk_os_slash_equals,
-    tk_os_plus_equals,  // ? `+=`
-    tk_os_minus_equals,
     tk_comma,
     tk_colon,
     tk_semicolon,

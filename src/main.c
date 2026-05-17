@@ -29,6 +29,9 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "IF", .tag = tk_keyword_if},
     (LexItem) {.literal = "ELSE", .tag = tk_keyword_else},
     (LexItem) {.literal = "WHILE", .tag = tk_keyword_while},
+    (LexItem) {.literal = "FOR", .tag = tk_keyword_for},
+    (LexItem) {.literal = "BREAK", .tag = tk_keyword_break},
+    (LexItem) {.literal = "CONTINUE", .tag = tk_keyword_continue},
     (LexItem) {.literal = "RET", .tag = tk_keyword_ret},
     (LexItem) {.literal = "FUN", .tag = tk_keyword_fun},
     (LexItem) {.literal = "END", .tag = tk_keyword_end},
@@ -44,11 +47,7 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "||", .tag = tk_os_or},
     (LexItem) {.literal = ":=", .tag = tk_os_bind_equals},
     (LexItem) {.literal = "::", .tag = tk_os_access_of},
-    (LexItem) {.literal = ":", .tag = tk_colon},
-    (LexItem) {.literal = "*=", .tag = tk_os_times_equals},
-    (LexItem) {.literal = "/=", .tag = tk_os_slash_equals},
-    (LexItem) {.literal = "+=", .tag = tk_os_plus_equals},
-    (LexItem) {.literal = "-=", .tag = tk_os_minus_equals}
+    (LexItem) {.literal = ":", .tag = tk_colon}
 };
 
 // ? Stores a corresponding native function per index, 1-to-1 against toyscript_native_names.
