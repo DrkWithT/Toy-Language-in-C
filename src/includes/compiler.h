@@ -7,16 +7,21 @@
 
 
 
-int charspan_atoi(const charspan *s);
-
-
-
 #define DEFAULT_SYMBOL_CAPACITY 8
+
+STUB_SCALAR_VEC(int)
+
+int charspan_atoi(const charspan *s);
+float charspan_atof(const charspan *s);
+
+
 
 typedef enum symbol_domain_t : uint8_t {
     symbol_constant,
     symbol_local,
-    symbol_func
+    symbol_func,
+    symbol_native,
+    symbol_string,
 } Domain;
 
 typedef struct symbol_info_t {
@@ -41,27 +46,51 @@ void symbol_table_clear(SymbolTable *self);
 const SymbolInfo *symbol_table_find(const SymbolTable *symbols, const charspan *s);
 const SymbolInfo *symbol_table_push(SymbolTable *symbols, const SymbolInfo *info);
 
+
+
+// ? This ActiveLoop type stores information to help backpatch bytecode jumps in loops.
+typedef struct active_loop_t {
+    ScalarVec_int loop_breaks;
+    ScalarVec_int loop_continues;
+} ActiveLoop;
+
+void ActiveLoop_dud(ActiveLoop *self);
+void ActiveLoop_copy(ActiveLoop *self, const ActiveLoop *other);
+void ActiveLoop_del(ActiveLoop *self);
+
+STUB_VEC(ActiveLoop)
+
+
 typedef enum bcgen_flag_t : uint8_t {
     cgen_no_flags = 0b0000,
     cgen_assign_to = 0b0001,    // ? Is the compiler within a variable init / assignment's LHS?
     cgen_access_of = 0b0010,    // ? Is the compiler within a member access expression LHS?
     cgen_lhs_local = 0b0100,    // ? Has the compiler just consumed only an assignment LHS name?
+    cgen_lhs_native = 0b1000    // ? Has the compiler consumed a native function's name in the LHS?
 } CodegenFlag;
+
+
 
 typedef struct compiler_t {
     SymbolTable globals;
     SymbolTable locals;
+    AnyVec_ActiveLoop loops;
     Token prev;
     Token curr;
     int errors;
     int16_t chunk_idx;  // ? 0 indexes top level code, 1+ indexes a code chunk per procedure, applying only for compiling a FUN decl.
-    uint8_t saved_local_id;
+    int16_t next_native_id;
+    int16_t next_str_id;
+    uint8_t saved_id;
     uint8_t flags;
 } Compiler;
 
 Compiler make_compiler();
 void compiler_del(Compiler *self);
 
+void compiler_map_native(Compiler *self, const charspan *s);
+
+int8_t compiler_peek_past_spaces(const Compiler *self, Lexer *l, const charspan *source, char c);
 int8_t compiler_match_curr(const Compiler *self, TkTag tag);
 int8_t compiler_match_prev(const Compiler *self, TkTag tag);
 Token compiler_advance_tk(Compiler *self, Lexer *lexer, const charspan *s);
@@ -80,6 +109,12 @@ const SymbolInfo *compiler_resolve_name(const Compiler *self, const charspan *s)
 const SymbolInfo *compiler_record_function(Compiler *self, Program *pg, const charspan *s, int chunk_id);
 const SymbolInfo *compiler_record_local(Compiler *self, Program *pg, const charspan *s);
 const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const charspan *s_symbol, Value v);
+const SymbolInfo *compiler_record_string(Compiler *self, Program *pg, const charspan *s);
+
+ActiveLoop *compiler_enter_loop(Compiler *self);
+void compiler_leave_loop(Compiler *self);
+void compiler_track_break_pos(Compiler *self, int pos);
+void compiler_track_continue_pos(Compiler *self, int pos);
 
 int8_t compiler_do_list(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
@@ -95,6 +130,9 @@ int8_t compiler_do_or(Compiler *self, Lexer *lexer, const charspan *s, Program *
 int8_t compiler_do_vars(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_for(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_break(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_continue(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_func(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);

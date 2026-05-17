@@ -12,7 +12,7 @@ typedef enum vm_vtag_t : uint8_t {
     vtag_bool,
     vtag_int,
     vtag_real,
-    // vtag_strid,     // ? Holds an ID into an interned string pool.
+    vtag_strid,     // ? Holds an ID into an interned string pool.
     vtag_obj_id        // ? Holds an ID into an object pool.
 } ValTag;
 
@@ -80,14 +80,21 @@ static inline Value make_value_real(float f) {
     };
 }
 
+static inline Value make_value_str(uint16_t str_id) {
+    return (Value) {
+        .data = {
+            .i = str_id,
+        },
+        .tag = vtag_strid
+    };
+}
+
 void Value_dud(Value* ins);
 void Value_new(MAYBE_UNUSED Value *ins);
 void Value_copy(MAYBE_UNUSED Value *ins, MAYBE_UNUSED const Value *other);
 void Value_move(MAYBE_UNUSED Value *ins, MAYBE_UNUSED Value *other);
 void Value_del(MAYBE_UNUSED Value *ins);
 
-// int value_as_strid(const Value *v);
-// int value_as_mttid(const Value *v);
 void print_value(const Value *v);
 
 STUB_VEC(Value)

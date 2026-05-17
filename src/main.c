@@ -7,11 +7,12 @@
 #include "compiler.h"
 #include "vm.h"
 
+#include "natives.h"
+
 
 
 #define VM_STACK_MAX 1024
 #define VM_DEPTH_MAX 64
-
 
 
 static const char *project_name = " _____         _____         _     _  \n"
@@ -28,6 +29,9 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "IF", .tag = tk_keyword_if},
     (LexItem) {.literal = "ELSE", .tag = tk_keyword_else},
     (LexItem) {.literal = "WHILE", .tag = tk_keyword_while},
+    (LexItem) {.literal = "FOR", .tag = tk_keyword_for},
+    (LexItem) {.literal = "BREAK", .tag = tk_keyword_break},
+    (LexItem) {.literal = "CONTINUE", .tag = tk_keyword_continue},
     (LexItem) {.literal = "RET", .tag = tk_keyword_ret},
     (LexItem) {.literal = "FUN", .tag = tk_keyword_fun},
     (LexItem) {.literal = "END", .tag = tk_keyword_end},
@@ -43,14 +47,47 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "||", .tag = tk_os_or},
     (LexItem) {.literal = ":=", .tag = tk_os_bind_equals},
     (LexItem) {.literal = "::", .tag = tk_os_access_of},
-    (LexItem) {.literal = ":", .tag = tk_colon},
-    (LexItem) {.literal = "*=", .tag = tk_os_times_equals},
-    (LexItem) {.literal = "/=", .tag = tk_os_slash_equals},
-    (LexItem) {.literal = "+=", .tag = tk_os_plus_equals},
-    (LexItem) {.literal = "-=", .tag = tk_os_minus_equals}
+    (LexItem) {.literal = ":", .tag = tk_colon}
 };
 
+// ? Stores a corresponding native function per index, 1-to-1 against toyscript_native_names.
+static const NativeFn toyscript_natives[] = {
+    native_print,
+    native_powf,
+    native_sqrtf,
+    native_clampf,
+    native_floorf,
+    native_ceilf,
+    // TODO: add more.
+};
 
+// ? Stores name to position info for native functions so that the compiler properly generates native calls.
+static const charspan toyscript_native_names[] = {
+    (charspan) {
+        .data = "print",
+        .length = 5
+    },
+    (charspan) {
+        .data = "powf",
+        .length = 4
+    },
+    (charspan) {
+        .data = "sqrtf",
+        .length = 5
+    },
+    (charspan) {
+        .data = "clampf",
+        .length = 6
+    },
+    (charspan) {
+        .data = "floorf",
+        .length = 6
+    },
+    (charspan) {
+        .data = "ceilf",
+        .length = 5
+    },
+};
 
 mystr read_file(const char *fname) {
     FILE *fs = fopen(fname, "r");
@@ -121,7 +158,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (show_version) {
-        printf("\x1b[1;33m%s\x1b[0m\n\nv0.1.0\t By: DrkWithT (GitHub)", project_name);
+        printf("\x1b[1;33m%s\x1b[0m\n\nv0.4.1\t By: DrkWithT (GitHub)", project_name);
         return 0;
     } else if (show_help) {
         printf("usage: ./toyscript [-h | -v | [-d | -r] <file name>]\n-h: help\n-v: show version\n");
@@ -141,6 +178,14 @@ int main(int argc, char *argv[]) {
     Lexer tokenizer = make_lexer(&source_view, special_lexicals);
     Compiler compiler = make_compiler();
 
+    // TODO: add more library functions for time, math, I/O.
+    compiler_map_native(&compiler, &toyscript_native_names[0]);
+    compiler_map_native(&compiler, &toyscript_native_names[1]);
+    compiler_map_native(&compiler, &toyscript_native_names[2]);
+    compiler_map_native(&compiler, &toyscript_native_names[3]);
+    compiler_map_native(&compiler, &toyscript_native_names[4]);
+    compiler_map_native(&compiler, &toyscript_native_names[5]);
+
     Program program;
     program_dud(&program);
 
@@ -156,7 +201,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    VMState vm = make_vm(&program, VM_STACK_MAX, VM_DEPTH_MAX);
+    VMState vm = make_vm(&program, toyscript_natives, VM_STACK_MAX, VM_DEPTH_MAX, DEFAULT_HEAP_CAPACITY);
 
     struct timeval begin, end;
     gettimeofday(&begin, NULL);
@@ -167,7 +212,10 @@ int main(int argc, char *argv[]) {
 
     puts("Result:");
     print_value(&ans);
-    printf("\nDONE in %d ms\n", abs(end.tv_usec / 1000 - begin.tv_usec / 1000));
+
+    const int end_usec = end.tv_sec * 1000000 + end.tv_usec;
+    const int begin_usec = begin.tv_sec * 1000000 + begin.tv_usec;
+    printf("\nDONE in %d ms\n", abs(end_usec - begin_usec) / 1000);
 
     dispose_vm(&vm);
     program_del(&program);

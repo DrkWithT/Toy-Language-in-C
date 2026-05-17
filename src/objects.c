@@ -125,7 +125,7 @@ int16_t heap_store(ObjHeap *self, ObjMutPtr object) {
 }
 
 void heap_erase(ObjHeap *self, int16_t cell_id) {
-    if (cell_id < 0 || cell_id >= self->next_cell_id) {
+    if (cell_id < self->tenure_count || cell_id >= self->next_cell_id) {
         return;
     }
 

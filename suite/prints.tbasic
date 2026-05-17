@@ -1,0 +1,13 @@
+`test print function`
+
+print(NIL);
+
+print(TRUE, FALSE);
+
+print(100);
+
+print(1.25);
+
+print([1, 2, 3]);
+
+RET 0;

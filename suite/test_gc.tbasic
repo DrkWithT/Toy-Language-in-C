@@ -1,0 +1,10 @@
+LET count : 0, end : 172;
+LET trash : 0;
+
+`VM heap's ripe population is 171+`
+WHILE count < end:
+    trash := [0];
+    count := count + 1;
+END
+
+RET 0;

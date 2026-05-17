@@ -3,7 +3,18 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
+
+
+
+// * CONFIG MACROS: set as 0 if unneeded!
+
+#define TOYSCRIPT_DEBUG_GC_STATE 1
+
+
+
+// * UTILS:
 
 #define MAYBE_UNUSED __attribute((unused))
 
@@ -21,6 +32,14 @@ if (name_of_p == NULL) {\
 for (size_t name_of_p##_##i = 0; name_of_p##_##i < n; name_of_p##_##i++) {\
     type##_dud(name_of_p + name_of_p##_##i);\
 }\
+\
+
+#define DUD_SCALARS_N(type, name_of_p, n, file, line)\
+name_of_p = calloc((size_t)n, sizeof(type));\
+if (name_of_p == NULL) {\
+    FATAL_ABORT("Alloc Error", file, line, "Failed to initialize buffer of objects.");\
+}\
+memset(name_of_p, 0, (size_t)n);\
 \
 
 #define ALLOC_TYPE(type) ((type*)malloc(sizeof(type)))

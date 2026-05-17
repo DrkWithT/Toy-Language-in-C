@@ -5,23 +5,85 @@
 
 
 
+IMPL_SCALAR_VEC(int)
+
+void ActiveLoop_dud(ActiveLoop *self) {
+    ScalarVec_int_dud(&self->loop_breaks);
+    ScalarVec_int_dud(&self->loop_continues);
+}
+
+void ActiveLoop_copy(ActiveLoop *self, const ActiveLoop *other) {
+    ScalarVec_int_copy(&self->loop_breaks, &other->loop_breaks);
+    ScalarVec_int_copy(&self->loop_continues, &other->loop_continues);
+}
+
+void ActiveLoop_del(ActiveLoop *self) {
+    ScalarVec_int_del(&self->loop_breaks);
+    ScalarVec_int_del(&self->loop_continues);
+}
+
+IMPL_VEC(ActiveLoop)
+
+
+
 // ! This is UNCHECKED, assuming that the charspan is for a valid integer lexeme after tokenization.
 int charspan_atoi(const charspan *s) {
     int result = 0;
     int base = 1;
-
+    
     if (s->length > 8) {
         return 0;
     }
 
-    for (int i = s->length - 1; i >= 0; i--, base *= 10) {
+    const int8_t is_signed = s->data[0] == '-';
+
+    for (int i = s->length - 1; i >= is_signed; i--, base *= 10) {
         const int digit = s->data[i] - '0';
 
         result += digit * base;
     }
 
+    if (is_signed) {
+        result = -result;
+    }
+
     return result;
 }
+
+float charspan_atof(const charspan *s) {
+    static const float digit_vals[] = {0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0, 7.0f, 8.0f, 9.0f}; // ! NOTE: This uses a lookup table for digits as floats... Casting int to float is slow because of RAX <--> XMM.
+
+    float result = 0.0f;
+    float base = 1.0f;
+    const int8_t is_signed = s->data[0] == '-';
+
+    for (int point_search_pos = is_signed; point_search_pos < s->length; point_search_pos++) {
+        if (s->data[point_search_pos + 1] == '.') {
+            break;
+        }
+
+        base *= 10.0f;
+    }
+
+    for (int i = is_signed; i < s->length; i++) {
+        const char c = s->data[i];
+
+        if (c == '.') {
+            continue;
+        }
+
+        result += digit_vals[c - '0'] * base;
+        base /= 10.0f;
+    }
+
+    if (is_signed) {
+        result = -result;
+    }
+
+    return result;
+}
+
+
 
 SymbolInfo make_symbol_info(charspan name_v, int16_t id, Domain d) {
     return (SymbolInfo) {
@@ -39,8 +101,8 @@ SymbolTable make_symbol_table() {
             .infos = temp_infos,
             .length = 0,
             .capacity = DEFAULT_SYMBOL_CAPACITY,
-            .next_local_id = 1,     // ? Start from BP + 1 since BP holds the callee.
-            .next_global_id = 1     // ? Start from 1 since chunks 1+ are for other procedures.
+            .next_local_id = 0,     // ? Start from BP since BP holds the callee... OLD + 1 --> new ID.
+            .next_global_id = 1     // ? Start from 1 since chunks 1+ are for other procedures. 0 is the implicit main one.
         };
     }
 
@@ -49,7 +111,7 @@ SymbolTable make_symbol_table() {
         .length = 0,
         .capacity = 0,
         .next_local_id = 0,
-        .next_global_id = 0
+        .next_global_id = 1
     };
 }
 
@@ -73,6 +135,8 @@ void symbol_table_clear(SymbolTable *self) {
             .domain = symbol_constant
         };
     }
+
+    self->next_local_id = 0;
 }
 
 const SymbolInfo *symbol_table_find(const SymbolTable *symbols, const charspan *s) {
@@ -113,9 +177,13 @@ const SymbolInfo *symbol_table_push(SymbolTable *symbols, const SymbolInfo *info
 
 
 Compiler make_compiler() {
+    AnyVec_ActiveLoop temp_loops;
+    AnyVec_ActiveLoop_dud(&temp_loops);
+
     return (Compiler) {
         .globals = make_symbol_table(),
         .locals = make_symbol_table(),
+        .loops = temp_loops,
         .curr = (Token) {
             .begin = 0,
             .length = 0,
@@ -130,7 +198,9 @@ Compiler make_compiler() {
         },
         .errors = 0,
         .chunk_idx = 0,
-        .saved_local_id = 0,
+        .next_native_id = 0,
+        .next_str_id = 0,
+        .saved_id = 0,
         .flags = cgen_no_flags
     };
 }
@@ -138,6 +208,33 @@ Compiler make_compiler() {
 void compiler_del(Compiler *self) {
     symbol_table_del(&self->globals);
     symbol_table_del(&self->locals);
+    AnyVec_ActiveLoop_del(&self->loops);
+}
+
+void compiler_map_native(Compiler *self, const charspan *s) {
+    SymbolInfo native_fn_info = {
+        .name = *s,
+        .id = self->next_native_id,
+        .domain = symbol_native
+    };
+
+    symbol_table_push(&self->globals, &native_fn_info);
+    self->next_native_id++;
+}
+
+int8_t compiler_peek_past_spaces(const Compiler *self, Lexer *l, const charspan *source, char c) {
+    int8_t found = 0;
+
+    for (int i = self->curr.begin + self->curr.length; i < source->length; i++) {
+        if (is_space_symbol(source->data[i])) {
+            ;
+        } else {
+            found = source->data[i] == c;
+            break;
+        }
+    }
+
+    return found;
 }
 
 int8_t compiler_match_curr(const Compiler *self, TkTag tag) {
@@ -188,6 +285,7 @@ int8_t compiler_flag_of(const Compiler *self, CodegenFlag flag) {
     case cgen_assign_to: return (self->flags & flag);
     case cgen_access_of: return (self->flags & flag) >> 1;
     case cgen_lhs_local: return (self->flags & flag) >> 2;
+    case cgen_lhs_native: return (self->flags & flag) >> 3;
     default: return 0;
     }
 }
@@ -231,8 +329,6 @@ size_t compiler_emit_op_flagged(Compiler *self, Program *pg, Opcode op, uint8_t 
     return AnyVec_Instruction_len(code_ref);
 }
 
-
-
 const SymbolInfo *compiler_resolve_name(const Compiler *self, const charspan *s) {
     const SymbolInfo *temp = symbol_table_find(&self->globals, s);
 
@@ -264,9 +360,11 @@ const SymbolInfo *compiler_record_local(Compiler *self, Program *pg, const chars
         return result;
     }
 
+    self->locals.next_local_id++;
+
     SymbolInfo new_info = {
         .name = *s,
-        .id = self->locals.next_local_id++,
+        .id = self->locals.next_local_id,
         .domain = symbol_local
     };
 
@@ -292,6 +390,58 @@ const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const ch
     };
 
     return symbol_table_push(&self->locals, &new_info);
+}
+
+const SymbolInfo *compiler_record_string(Compiler *self, Program *pg, const charspan *s) {
+    mystr str;
+    mystr_res(&str, 10);
+    mystr_append_charspan(&str, s, s->length);
+    mystr_append_raw(&str, "\"", 1);
+
+    SymbolInfo new_info = {
+        .name = (charspan) {
+            .data = str.data,
+            .length = str.length
+        },
+        .id = self->next_str_id,
+        .domain = symbol_string
+    };
+
+    self->next_str_id++;
+    AnyVec_mystr_push(&pg->strings, &str);
+
+    return symbol_table_push(&self->globals, &new_info);
+}
+
+
+
+ActiveLoop *compiler_enter_loop(Compiler *self) {
+    ActiveLoop temp;
+    ActiveLoop_dud(&temp);
+
+    AnyVec_ActiveLoop_push(&self->loops, &temp);
+
+    return AnyVec_ActiveLoop_getm(&self->loops, AnyVec_ActiveLoop_len(&self->loops) - 1);
+}
+
+void compiler_leave_loop(Compiler *self) {
+    AnyVec_ActiveLoop_pop(&self->loops);
+}
+
+void compiler_track_break_pos(Compiler *self, int pos) {
+    ActiveLoop *temp = AnyVec_ActiveLoop_getm(&self->loops, AnyVec_ActiveLoop_len(&self->loops) - 1);
+
+    if (temp != NULL) {
+        ScalarVec_int_push(&temp->loop_breaks, pos);
+    }
+}
+
+void compiler_track_continue_pos(Compiler *self, int pos) {
+    ActiveLoop *temp = AnyVec_ActiveLoop_getm(&self->loops, AnyVec_ActiveLoop_len(&self->loops) - 1);
+
+    if (temp != NULL) {
+        ScalarVec_int_push(&temp->loop_continues, pos);
+    }
 }
 
 
@@ -339,7 +489,7 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
             compiler_eat_tk(self, lexer, s);
             return 1;
         case tk_true: case tk_false:
-            compiler_emit_op_flagged(self, pg, op_put_bool, curr_ref->tag == 1, 0);
+            compiler_emit_op_flagged(self, pg, op_put_bool, curr_ref->tag == tk_true, 0);
             compiler_eat_tk(self, lexer, s);
             return 1;
         case tk_integer:
@@ -347,9 +497,24 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
                 self,
                 pg,
                 &lexeme,
-                make_value_int(
-                    charspan_atoi(&lexeme)
-                )
+                make_value_int(charspan_atoi(&lexeme))
+            );
+            compiler_eat_tk(self, lexer, s);
+            break;
+        case tk_real:
+            temp_locus = compiler_record_constant(
+                self,
+                pg,
+                &lexeme,
+                make_value_real(charspan_atof(&lexeme))
+            );
+            compiler_eat_tk(self, lexer, s);
+            break;
+        case tk_string:
+            temp_locus = compiler_record_string(
+                self,
+                pg,
+                &lexeme
             );
             compiler_eat_tk(self, lexer, s);
             break;
@@ -385,9 +550,15 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
     }
 
     // todo: add case for assignment LHS's of table accesses...
+    if (self->curr.tag == tk_os_bind_equals) {
+        compiler_flag_on(self, cgen_assign_to);
+    } else {
+        compiler_flag_off(self, cgen_assign_to);
+    }
+
     if (compiler_flag_of(self, cgen_assign_to) && temp_locus->domain == symbol_local) {
         compiler_flag_on(self, cgen_lhs_local);
-        self->saved_local_id = temp_locus->id;
+        self->saved_id = temp_locus->id;
         return 1;
     }
 
@@ -399,8 +570,18 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
             compiler_emit_op_unflagged(self, pg, op_load_local, temp_locus->id);
             break;
         case symbol_func:
-        default:
+            // ? NOTE: The pushed ID is for a global procedure, VM or native.
             compiler_emit_op_unflagged(self, pg, op_load_imm_gid, temp_locus->id);
+            break;
+        case symbol_native:
+            compiler_flag_on(self, cgen_lhs_native);
+            // ? NOTE: The pushed ID is for a global procedure, VM or native.
+            compiler_emit_op_unflagged(self, pg, op_load_imm_gid, temp_locus->id);
+            break;
+        case symbol_string:
+            compiler_emit_op_unflagged(self, pg, op_load_string, temp_locus->id);
+            break;
+        default:
             break;
     }
 
@@ -417,10 +598,10 @@ int8_t compiler_do_lhs(Compiler *self, Lexer *lexer, const charspan *s, Program 
         return 1;
     }
 
-    const int8_t lhs_is_in_assign_lhs = compiler_flag_of(self, cgen_lhs_local);
-    if (lhs_is_in_assign_lhs) {
-        compiler_emit_op_flagged(self, pg, op_load_local, 0, self->saved_local_id);
+    if (compiler_flag_of(self, cgen_lhs_local)) {
+        compiler_emit_op_flagged(self, pg, op_load_local, 0, self->saved_id);
         compiler_flag_off(self, cgen_lhs_local);
+        compiler_flag_on(self, cgen_access_of);
     }
 
     while (!compiler_match_curr(self, tk_eof)) {
@@ -434,14 +615,12 @@ int8_t compiler_do_lhs(Compiler *self, Lexer *lexer, const charspan *s, Program 
             return 0;
         }
 
-        if (compiler_match_curr(self, tk_os_access_of)) {
-            compiler_emit_op(self, pg, op_get_idx);
-        } else if (lhs_is_in_assign_lhs) {
-            compiler_flag_on(self, cgen_access_of);
-        } else {
+        if (!compiler_flag_of(self, cgen_assign_to) || !compiler_match_curr(self, tk_os_bind_equals)) {
             compiler_emit_op(self, pg, op_get_idx);
         }
     }
+
+    compiler_flag_on(self, cgen_access_of);
 
     return 1;
 }
@@ -455,6 +634,8 @@ int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program
         return 0;
     }
 
+    int8_t outer_callee_is_native = compiler_flag_of(self, cgen_lhs_native);
+
     if (!compiler_match_curr(self, tk_lparen)) {
         return 1;
     }
@@ -464,6 +645,8 @@ int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program
         if (compiler_match_curr(self, tk_rparen)) {
             break;
         }
+
+        compiler_flag_off(self, cgen_lhs_native);
 
         if (!compiler_do_compare(self, lexer, s, pg)) {
             fprintf(stderr, "Note: See call at line %d.\n", callee_name.line);
@@ -478,7 +661,13 @@ int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program
     }
 
     compiler_eat_tk(self, lexer, s);
-    compiler_emit_op_unflagged(self, pg, op_call, arg_count);
+
+    if (outer_callee_is_native) {
+        compiler_flag_on(self, cgen_lhs_native);
+    }
+
+    compiler_emit_op_flagged(self, pg, op_call, compiler_flag_of(self, cgen_lhs_native), arg_count);
+    compiler_flag_off(self, cgen_lhs_native);
 
     return 1;
 }
@@ -754,9 +943,12 @@ int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program 
 int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
     compiler_eat_tk(self, lexer, s); // ? skip WHILE
 
+    ActiveLoop *loop_data = compiler_enter_loop(self);
+
     const int16_t while_check_pos = pg->chunks.data[self->chunk_idx].code.length;
     if (!compiler_do_or(self, lexer, s, pg)) {
         fprintf(stderr, "Note: See while-loop condition around line %d.\n", self->curr.line);
+        compiler_leave_loop(self);
         return 0;
     }
 
@@ -765,16 +957,212 @@ int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Progra
 
     if (!compiler_do_block(self, lexer, s, pg)) {
         fprintf(stderr, "Note: See while-body around line %d.\n", self->curr.line);
+        compiler_leave_loop(self);
         return 0;
     }
 
+    // ? 1. Patch 2 main loop jumps: the repeat & exit...
     const int16_t while_jmp_back_pos = pg->chunks.data[self->chunk_idx].code.length;
     compiler_emit_op_flagged(self, pg, op_jmp, 1, 0); // ? flags = 1 ==> backwards jump applies!
     const int16_t while_exit_pos = pg->chunks.data[self->chunk_idx].code.length;
-    compiler_emit_op(self, pg, op_pop); // ? pop off check after loop quits WHEN it's FALSE
+    compiler_emit_op_flagged(self, pg, op_pop, 1, 0); // ? pop off check after loop quits WHEN it's FALSE
 
     pg->chunks.data[self->chunk_idx].code.data[while_jmp_back_pos].wide = while_jmp_back_pos - while_check_pos;
     pg->chunks.data[self->chunk_idx].code.data[while_jmp_out_pos].wide = while_exit_pos - while_jmp_out_pos;
+
+    // ? 2. Patch loop breaks and continues...
+    const int break_count = ScalarVec_int_len(&loop_data->loop_breaks);
+    for (int break_i = 0; break_i < break_count; break_i++) {
+        const int break_pos = ScalarVec_int_get(&loop_data->loop_breaks, break_i);
+
+        pg->chunks.data[self->chunk_idx].code.data[break_pos].wide = while_exit_pos - break_pos;
+    }
+
+    const int continue_count = ScalarVec_int_len(&loop_data->loop_continues);
+    for (int continue_i = 0; continue_i < continue_count; continue_i++) {
+        const int continue_pos = ScalarVec_int_get(&loop_data->loop_continues, continue_i);
+
+        pg->chunks.data[self->chunk_idx].code.data[continue_pos].wide = continue_pos - while_check_pos;
+        pg->chunks.data[self->chunk_idx].code.data[continue_pos].flag = 1;
+    }
+
+    compiler_leave_loop(self);
+    return 1;
+}
+
+/*
+ * ### EXAMPLE:
+ * `FOR i : 0, i < 10, i := i + 1; :`
+ *
+ * `print(i);`
+ *
+ * `END`
+ *
+ */
+int8_t compiler_do_for(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    compiler_eat_tk(self, lexer, s); // ? skip FOR
+
+    ActiveLoop *loop_data = compiler_enter_loop(self);
+
+    if (!compiler_match_curr(self, tk_identifier)) {
+        compiler_warn(self, "Expected name for counter variable in C-style for loop here.", &self->curr, s);
+        fprintf(stderr, "\tNote: See line %d.\n", self->curr.line);
+
+        compiler_leave_loop(self);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    const int counter_name_line = self->prev.line;
+    charspan counter_name = {
+        .data = s->data + self->prev.begin,
+        .length = self->prev.length
+    };
+    const SymbolInfo *counter_info = compiler_resolve_name(self, &counter_name);
+
+    if (!compiler_match_curr(self, tk_colon)) {
+        compiler_warn(self, "Expected ':' after counter variable in C-style FOR loop here.", &self->curr, s);
+        fprintf(stderr, "\tNote: See line %d.\n", self->curr.line);
+
+        compiler_leave_loop(self);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    if (!compiler_do_or(self, lexer, s, pg)) {
+        fprintf(stderr, "\tNote: invalid initializer of FOR loop counter around line %d.\n", self->prev.line);
+
+        compiler_leave_loop(self);
+        return 0;
+    }
+
+    if (counter_info->domain == symbol_local) {
+        compiler_emit_op_unflagged(self, pg, op_store_local, counter_info->id);
+    } else {
+        compiler_warn(self, "Invalid name of loop counter around here- shadows a similar non-local name.", &self->prev, s);
+        fprintf(stderr, "\tNote: see line %d.\n", counter_name_line);
+        return 0;
+    }
+
+    if (!compiler_match_curr(self, tk_comma)) {
+        compiler_warn(self, "Expected ',' after counter in FOR loop here.", &self->curr, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->curr.line);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    const int loop_begin_pos = pg->chunks.data[self->chunk_idx].code.length;
+    if (!compiler_do_or(self, lexer, s, pg)) {
+        fprintf(stderr, "\tNote: invalid condition of FOR loop around line %d.\n", self->prev.line);
+
+        compiler_leave_loop(self);
+        return 0;
+    }
+    const int loop_jump_out_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op_unflagged(self, pg, op_jmp_false, 0);
+
+    if (!compiler_match_curr(self, tk_comma)) {
+        compiler_warn(self, "Expected ',' after check in FOR loop here.", &self->curr, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->curr.line);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    const int loop_skip_update_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op_unflagged(self, pg, op_jmp, 0);
+
+    const int loop_start_update_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op_unflagged(self, pg, op_nop, 0);
+    if (!compiler_do_expr_stmt(self, lexer, s, pg)) {
+        fprintf(stderr, "\tNote: invalid update clause of FOR loop around line %d.\n", self->prev.line);
+
+        compiler_leave_loop(self);
+        return 0;
+    }
+    // ? Emit & easily patch "loop-repeater" jump AFTER update evaluations...
+    const int loop_repeater_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op_flagged(self, pg, op_jmp, 1, loop_repeater_pos - loop_begin_pos);
+    // ? Patch the jump at loop_skip_update_pos since the update clause was fully resolved here...
+    pg->chunks.data[self->chunk_idx].code.data[loop_skip_update_pos].wide = loop_repeater_pos + 1 - loop_skip_update_pos;
+
+    if (!compiler_do_block(self, lexer, s, pg)) {
+        fprintf(stderr, "\tNote: invalid body of FOR loop around line %d.\n", self->prev.line);
+
+        compiler_leave_loop(self);
+        return 0;
+    }
+
+    // ? Patch returning jump to update clause after body evaluation...
+    const int loop_jump_to_update_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op_flagged(self, pg, op_jmp, 1, loop_jump_to_update_pos - loop_start_update_pos);
+
+    // ? Patch checked-jump to loop exiting position here since the body is resolved then...
+    const int loop_end_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_emit_op(self, pg, op_nop);
+    pg->chunks.data[self->chunk_idx].code.data[loop_jump_out_pos].wide = loop_end_pos - loop_jump_out_pos;
+
+    // ? Patch main loop jumps & any break / continue jumps...
+    const int break_count = ScalarVec_int_len(&loop_data->loop_breaks);
+    for (int break_i = 0; break_i < break_count; break_i++) {
+        const int break_pos = ScalarVec_int_get(&loop_data->loop_breaks, break_i);
+
+        pg->chunks.data[self->chunk_idx].code.data[break_pos].wide = loop_end_pos - break_pos;
+    }
+
+    const int continue_count = ScalarVec_int_len(&loop_data->loop_continues);
+    for (int continue_i = 0; continue_i < continue_count; continue_i++) {
+        const int continue_pos = ScalarVec_int_get(&loop_data->loop_continues, continue_i);
+
+        pg->chunks.data[self->chunk_idx].code.data[continue_pos].wide = continue_pos - loop_start_update_pos;
+        pg->chunks.data[self->chunk_idx].code.data[continue_pos].flag = 1;
+    }
+
+    compiler_leave_loop(self);
+    return 1;
+}
+
+int8_t compiler_do_break(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    compiler_eat_tk(self, lexer, s); // ? skip BREAK
+
+    if (AnyVec_ActiveLoop_empty(&self->loops)) {
+        compiler_warn(self, "Expected an enclosing loop for a 'BREAK' statement here.", &self->prev, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->prev.line);
+        return 0;
+    }
+
+    if (!compiler_match_curr(self, tk_semicolon)) {
+        compiler_warn(self, "Expected a ';' closing a 'BREAK' statement here.", &self->prev, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->prev.line);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    const int break_bc_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_track_break_pos(self, break_bc_pos);
+    compiler_emit_op_unflagged(self, pg, op_jmp, 0);
+
+    return 1;
+}
+
+int8_t compiler_do_continue(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    compiler_eat_tk(self, lexer, s); // ? skip BREAK
+
+    if (AnyVec_ActiveLoop_empty(&self->loops)) {
+        compiler_warn(self, "Expected an enclosing loop for a 'CONTINUE' statement here.", &self->prev, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->prev.line);
+        return 0;
+    }
+
+    if (!compiler_match_curr(self, tk_semicolon)) {
+        compiler_warn(self, "Expected a ';' closing a 'BREAK' statement here.", &self->prev, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->prev.line);
+        return 0;
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    const int continue_bc_pos = pg->chunks.data[self->chunk_idx].code.length;
+    compiler_track_continue_pos(self, continue_bc_pos);
+    compiler_emit_op_unflagged(self, pg, op_jmp, 0);
 
     return 1;
 }
@@ -782,14 +1170,17 @@ int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Progra
 int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
     compiler_eat_tk(self, lexer, s); // ? skip RET
 
+    compiler_flag_off(self, cgen_assign_to);
     if (!compiler_do_or(self, lexer, s, pg)) {
         fprintf(stderr, "Note: See return-result expression at line %d.\n", self->curr.line);
+        fprintf(stderr, "\tNote: see line %d.\n", self->prev.line);
         return 0;
     }
     compiler_emit_op(self, pg, op_ret);
 
     if (!compiler_match_curr(self, tk_semicolon)) {
         compiler_warn(self, "Expected ';' after return statement.", &self->curr, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->curr.line);
         return 0;
     }
     compiler_eat_tk(self, lexer, s);
@@ -817,19 +1208,21 @@ int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Pr
 
         // ? If we have consumed only a name = <value>, emit a simple update of that local slot.
         if (compiler_flag_of(self, cgen_lhs_local)) {
-            compiler_emit_op_flagged(self, pg, op_store_local, 0, self->saved_local_id);
+            compiler_emit_op_flagged(self, pg, op_store_local, 0, self->saved_id);
             compiler_flag_off(self, cgen_lhs_local);
         } else if (compiler_flag_of(self, cgen_access_of)) {
             compiler_emit_op(self, pg, op_set_idx);
             compiler_flag_off(self, cgen_access_of);
         } else {
-            compiler_warn(self, "Invalid LHS of assignment, expected a name or key-access expression around line %d.\n", &self->prev, s);
+            compiler_warn(self, "Invalid LHS of assignment, expected a name or key-access expression.\n", &self->prev, s);
+            fprintf(stderr, "\tNote: see line %d.\n", self->prev.line);
             // return 0;
         }
     }
 
     if (!compiler_match_curr(self, tk_semicolon)) {
         compiler_warn(self, "Expected ';' after expr-stmt.", &self->curr, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->curr.line);
         return 0;
     }
     compiler_eat_tk(self, lexer, s);
@@ -845,6 +1238,12 @@ int8_t compiler_do_nestable_stmt(Compiler *self, Lexer *lexer, const charspan *s
         return compiler_do_ifs(self, lexer, s, pg);
     case tk_keyword_while:
         return compiler_do_while(self, lexer, s, pg);
+    case tk_keyword_for:
+        return compiler_do_for(self, lexer, s, pg);
+    case tk_keyword_break:
+        return compiler_do_break(self, lexer, s, pg);
+    case tk_keyword_continue:
+        return compiler_do_continue(self, lexer, s, pg);
     case tk_keyword_ret:
         return compiler_do_ret(self, lexer, s, pg);
     default:
@@ -855,6 +1254,7 @@ int8_t compiler_do_nestable_stmt(Compiler *self, Lexer *lexer, const charspan *s
 int8_t compiler_do_block(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
     if (!compiler_match_curr(self, tk_colon)) {
         compiler_warn(self, "Expected ':' starting block.", &self->curr, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->curr.line);
         return 0;
     }
     compiler_eat_tk(self, lexer, s);
@@ -866,7 +1266,7 @@ int8_t compiler_do_block(Compiler *self, Lexer *lexer, const charspan *s, Progra
 
         const int stmt_line = self->curr.line;
         if (!compiler_do_nestable_stmt(self, lexer, s, pg)) {
-            fprintf(stderr, "Note: See nested statemnt in block body around line %d\n", stmt_line);
+            fprintf(stderr, "Note: See nested statement in block body around line %d.\n", stmt_line);
             return 0;
         }
     }
@@ -880,6 +1280,7 @@ int8_t compiler_do_func(Compiler *self, Lexer *lexer, const charspan *s, Program
 
     if (!compiler_match_curr(self, tk_identifier)) {
         compiler_warn(self, "Expected name for FUN declaration.", &self->curr, s);
+        fprintf(stderr, "\tNote: see line %d.\n", self->curr.line);
         return 0;
     }
     compiler_eat_tk(self, lexer, s);
@@ -907,6 +1308,7 @@ int8_t compiler_do_func(Compiler *self, Lexer *lexer, const charspan *s, Program
             break;
         } else if (!compiler_match_curr(self, tk_identifier)) {
             compiler_warn(self, "Expected name in params list here.", &self->curr, s);
+            fprintf(stderr, "\tNote: see line %d.\n", self->curr.line);
             return 0;
         }
         
@@ -943,6 +1345,8 @@ int8_t compiler_do_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program
         return compiler_do_ifs(self, lexer, s, pg);
     case tk_keyword_while:
         return compiler_do_while(self, lexer, s, pg);
+    case tk_keyword_for:
+        return compiler_do_for(self, lexer, s, pg);
     case tk_keyword_ret:
         return compiler_do_ret(self, lexer, s, pg);
     case tk_keyword_fun:

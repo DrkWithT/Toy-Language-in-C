@@ -1,0 +1,14 @@
+`test for loops`
+
+FUN sumN(n):
+    LET total : 0, m : 0;
+
+    FOR m : n, m > 0, m := (m - 1); :
+        total := (total + m);
+    END
+
+    RET total;
+END
+
+`should give 55`
+RET sumN(10);

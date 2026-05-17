@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "bytecode.h"
 #include "objects.h"
+#include "gc.h"
 
 
 #define TAILCALL __attribute((musttail))
@@ -16,8 +17,11 @@ typedef enum vm_status_t : uint8_t {
     vm_status_err_abort
 } VMStatus;
 
-// ? fwd decl. of VMState
+// ? Provides a forward decl. of VMState:
 typedef struct vm_state_t VMState;
+
+// ? Provides a type alias for native built-in functions:
+typedef VMStatus(*NativeFn)(VMState *s, int argc);
 
 // ? This opcode handler type MUST do at least 2 things: update IP & tail-call into the dispatch function.
 typedef VMStatus(*OpFunc)(VMState *, const Instruction *, const Value *, Value *);
@@ -31,6 +35,7 @@ VMStatus fn_store_local(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_put_k(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_dup(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_pop(VMState *, const Instruction *, const Value *, Value *);
+VMStatus fn_load_string(VMState *s, const Instruction *ip, const Value *cvp, Value *stack);
 VMStatus fn_mk_list(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_get_idx(VMState *, const Instruction *, const Value *, Value *);
 VMStatus fn_set_idx(VMState *, const Instruction *, const Value *, Value *);
@@ -55,6 +60,8 @@ VMStatus vm_dispatch(VMState *s, const Instruction *ip, const Value *cvp, Value 
 // ? Main VM state. Tracks stack state and refers to a current bytecode chunk for dispatch.
 typedef struct vm_state_t {
     ObjHeap heap;
+    GCState gc;
+    const NativeFn *native_table;
     const Program *prgm;
     const Instruction *ip;
     const Value *cvp;
@@ -65,7 +72,7 @@ typedef struct vm_state_t {
     VMStatus status;
 } VMState;
 
-VMState make_vm(const Program *program, int locals_max, uint8_t depth_max);
+VMState make_vm(const Program *program, const NativeFn *native_table_ptr, int locals_max, uint8_t depth_max, int16_t heap_pop_max);
 
 void dispose_vm(VMState *s);
 

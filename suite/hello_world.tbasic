@@ -1,0 +1,5 @@
+`test hello world msg`
+
+print("Hello World");
+
+RET 0;
