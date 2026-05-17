@@ -7,12 +7,14 @@
 
 
 
+#define DEFAULT_SYMBOL_CAPACITY 8
+
+STUB_SCALAR_VEC(int)
+
 int charspan_atoi(const charspan *s);
 float charspan_atof(const charspan *s);
 
 
-
-#define DEFAULT_SYMBOL_CAPACITY 8
 
 typedef enum symbol_domain_t : uint8_t {
     symbol_constant,
@@ -44,6 +46,21 @@ void symbol_table_clear(SymbolTable *self);
 const SymbolInfo *symbol_table_find(const SymbolTable *symbols, const charspan *s);
 const SymbolInfo *symbol_table_push(SymbolTable *symbols, const SymbolInfo *info);
 
+
+
+// ? This ActiveLoop type stores information to help backpatch bytecode jumps in loops.
+typedef struct active_loop_t {
+    ScalarVec_int loop_breaks;
+    ScalarVec_int loop_continues;
+} ActiveLoop;
+
+void ActiveLoop_dud(ActiveLoop *self);
+void ActiveLoop_copy(ActiveLoop *self, const ActiveLoop *other);
+void ActiveLoop_del(ActiveLoop *self);
+
+STUB_VEC(ActiveLoop)
+
+
 typedef enum bcgen_flag_t : uint8_t {
     cgen_no_flags = 0b0000,
     cgen_assign_to = 0b0001,    // ? Is the compiler within a variable init / assignment's LHS?
@@ -52,9 +69,12 @@ typedef enum bcgen_flag_t : uint8_t {
     cgen_lhs_native = 0b1000    // ? Has the compiler consumed a native function's name in the LHS?
 } CodegenFlag;
 
+
+
 typedef struct compiler_t {
     SymbolTable globals;
     SymbolTable locals;
+    AnyVec_ActiveLoop loops;
     Token prev;
     Token curr;
     int errors;
@@ -91,6 +111,11 @@ const SymbolInfo *compiler_record_local(Compiler *self, Program *pg, const chars
 const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const charspan *s_symbol, Value v);
 const SymbolInfo *compiler_record_string(Compiler *self, Program *pg, const charspan *s);
 
+ActiveLoop *compiler_enter_loop(Compiler *self);
+void compiler_leave_loop(Compiler *self);
+void compiler_track_break_pos(Compiler *self, int pos);
+void compiler_track_continue_pos(Compiler *self, int pos);
+
 int8_t compiler_do_list(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_lhs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
@@ -105,6 +130,9 @@ int8_t compiler_do_or(Compiler *self, Lexer *lexer, const charspan *s, Program *
 int8_t compiler_do_vars(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_ifs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_while(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_for(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_break(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_continue(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_ret(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_func(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);

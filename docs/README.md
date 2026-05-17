@@ -4,7 +4,7 @@
 A very trivial scripting language implemented in C11. Only for educational purposes.
 
 ### Usage - Building
- - Requires CMake 4.2 (but 3.30+ is fine)
+ - Requires CMake 4.2 (but 3.16+ is fine)
  - Make, Ninja, or another build tool
  - Clang is preferred
  - Usage: `./project.sh help`
@@ -37,10 +37,13 @@ A very trivial scripting language implemented in C11. Only for educational purpo
    - Math: powf(), sqrtf(), clamp(), floorf(), and ceilf()
 
 #### v0.4.0
- - Add immutable strings as separate, interned values.
+ - Add negative number literals. **TODO**
+ - Add for-loop variation with `BREAK;` and `CONTINUE;` **WIP**
+ - DEBUG statement
+
+#### v0.5.0
+ - Add immutable strings as separate, interned values. **WIP**
    - Create string type.
    - Create string pool.
-   - Add `FUN readln(delim) -> string`.
-   - Add `FUN fopen(), fclose(), fgetc()`
- - Add simple structs and impls??
-   - Add `mut` / not-mut members, using runtime mutability checks.
+   - Add `FUN readln(fd, delim) -> string`.
+   - Add `FUN fopen(fpath), fclose(fd), fgetc(fd)`
