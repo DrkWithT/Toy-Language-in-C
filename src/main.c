@@ -58,6 +58,8 @@ static const NativeFn toyscript_natives[] = {
     native_clampf,
     native_floorf,
     native_ceilf,
+    native_console_readln,
+    native_console_reset
     // TODO: add more.
 };
 
@@ -87,6 +89,14 @@ static const charspan toyscript_native_names[] = {
         .data = "ceilf",
         .length = 5
     },
+    (charspan) {
+        .data = "creadln",
+        .length = 7
+    },
+    (charspan) {
+        .data = "creset",
+        .length = 6
+    }
 };
 
 mystr read_file(const char *fname) {
@@ -185,6 +195,8 @@ int main(int argc, char *argv[]) {
     compiler_map_native(&compiler, &toyscript_native_names[3]);
     compiler_map_native(&compiler, &toyscript_native_names[4]);
     compiler_map_native(&compiler, &toyscript_native_names[5]);
+    compiler_map_native(&compiler, &toyscript_native_names[6]);
+    compiler_map_native(&compiler, &toyscript_native_names[7]);
 
     Program program;
     program_dud(&program);
