@@ -652,6 +652,11 @@ VMState make_vm(const Program *program, const NativeFn *native_table_ptr, int lo
 void dispose_vm(VMState *s) {
     heap_del(&s->heap);
     GCState_del(&s->gc);
+
+    if (s->stack != NULL) {
+        free(s->stack);
+        s->stack = NULL;
+    }
 }
 
 VMStatus vm_status(const VMState *s) {
