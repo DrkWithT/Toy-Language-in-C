@@ -161,7 +161,7 @@ static inline VMStatus native_console_readln(VMState *s, int argc) {
     };
 
     mystr input_str;
-    mystr_dud(&input_str);
+    mystr_new(&input_str, "");
     
     if (!mystr_append_charspan(&input_str, &raw_input_view, raw_input_view.length)) {
         fprintf(stderr, "Failed to fill string with raw input.\n");

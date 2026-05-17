@@ -39,11 +39,14 @@ A very trivial scripting language implemented in C11. Only for educational purpo
 #### v0.4.x
  - Add for-loop variation with `BREAK;` and `CONTINUE;` **OK**
  - Add negative number literals. **OK**
- - DEBUG statement
+ - Add object display methods. **OK**
 
 #### v0.5.x
- - Add immutable strings as separate, interned values. **WIP**
-   - Create string type.
-   - Create string pool.
-   - Add `FUN readln(fd, delim) -> string`.
-   - Add `FUN fopen(fpath), fclose(fd), fgetc(fd)`
+ - Add immutable strings as separate, interned values. **OK**
+   - Create string type. **WIP**
+   - Add more library functions:
+      - `stoi`, `stof`
+      - `fopen`, `fclose`, `freadn`, `freadln`, `freadln`
+
+#### v0.6.x
+ - DEBUG statement, dumping VM state for troubleshooting.

@@ -1,0 +1,5 @@
+LET msg : creadln();
+
+print(msg);
+
+RET 0;

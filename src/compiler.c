@@ -579,7 +579,7 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
             compiler_emit_op_unflagged(self, pg, op_load_imm_gid, temp_locus->id);
             break;
         case symbol_string:
-            compiler_emit_op_unflagged(self, pg, op_load_string, temp_locus->id);
+            compiler_emit_op_unflagged(self, pg, op_load_string_k, temp_locus->id);
             break;
         default:
             break;
