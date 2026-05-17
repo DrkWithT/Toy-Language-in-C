@@ -92,6 +92,10 @@ Token lexer_lex_numeric(Lexer *self, const charspan *s) {
     const int tk_line = self->line;
     int8_t points = 0;
 
+    if (s->data[self->pos] == '-') {
+        lexer_consume(self, '-');
+    }
+
     while (!lexer_done(self)) {
         const char c = s->data[self->pos];
 
@@ -218,9 +222,11 @@ Token lexer_next(Lexer *self, const charspan *s) {
         default: break;
     }
 
+    const char c2 = s->data[self->pos + 1];
+
     if (is_space_symbol(c)) {
         return lexer_lex_space(self, s);
-    } else if (is_numeric_symbol(c)) {
+    } else if (is_numeric_symbol(c) || (c == '-' && is_numeric_symbol(c2))) {
         return lexer_lex_numeric(self, s);
     } else if (is_op_symbol(c)) {
         return lexer_lex_operator(self, s);

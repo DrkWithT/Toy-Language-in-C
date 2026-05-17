@@ -37,8 +37,8 @@ A very trivial scripting language implemented in C11. Only for educational purpo
    - Math: powf(), sqrtf(), clamp(), floorf(), and ceilf()
 
 #### v0.4.x
- - Add negative number literals. **TODO**
- - Add for-loop variation with `BREAK;` and `CONTINUE;` **WIP**
+ - Add for-loop variation with `BREAK;` and `CONTINUE;` **OK**
+ - Add negative number literals. **OK**
  - DEBUG statement
 
 #### v0.5.x

@@ -30,15 +30,21 @@ IMPL_VEC(ActiveLoop)
 int charspan_atoi(const charspan *s) {
     int result = 0;
     int base = 1;
-
+    
     if (s->length > 8) {
         return 0;
     }
 
-    for (int i = s->length - 1; i >= 0; i--, base *= 10) {
+    const int8_t is_signed = s->data[0] == '-';
+
+    for (int i = s->length - 1; i >= is_signed; i--, base *= 10) {
         const int digit = s->data[i] - '0';
 
         result += digit * base;
+    }
+
+    if (is_signed) {
+        result = -result;
     }
 
     return result;
@@ -49,8 +55,9 @@ float charspan_atof(const charspan *s) {
 
     float result = 0.0f;
     float base = 1.0f;
+    const int8_t is_signed = s->data[0] == '-';
 
-    for (int point_search_pos = 0; point_search_pos < s->length; point_search_pos++) {
+    for (int point_search_pos = is_signed; point_search_pos < s->length; point_search_pos++) {
         if (s->data[point_search_pos + 1] == '.') {
             break;
         }
@@ -58,7 +65,7 @@ float charspan_atof(const charspan *s) {
         base *= 10.0f;
     }
 
-    for (int i = 0; i < s->length; i++) {
+    for (int i = is_signed; i < s->length; i++) {
         const char c = s->data[i];
 
         if (c == '.') {
@@ -67,6 +74,10 @@ float charspan_atof(const charspan *s) {
 
         result += digit_vals[c - '0'] * base;
         base /= 10.0f;
+    }
+
+    if (is_signed) {
+        result = -result;
     }
 
     return result;
