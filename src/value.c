@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "value.h"
 
-void Value_dud(Value* ins) {}
+void Value_dud(MAYBE_UNUSED Value* ins) {}
 void Value_new(MAYBE_UNUSED Value *ins) {}
 void Value_copy(MAYBE_UNUSED Value *ins, MAYBE_UNUSED const Value *other) {}
 void Value_move(MAYBE_UNUSED Value *ins, MAYBE_UNUSED Value *other) {}
