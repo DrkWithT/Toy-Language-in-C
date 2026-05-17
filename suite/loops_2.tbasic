@@ -1,0 +1,39 @@
+`test breaks in loops`
+
+FUN testA(x):
+    LET i : 0;
+    
+    WHILE i < x:
+        IF i == (x / 2):
+            BREAK;
+        END ELSE:
+            i = i + 1;
+        END
+    END
+
+    RET i;
+END
+
+FUN testB(y):
+    LET j : 0, old : 0;
+
+    WHILE j > 0:
+        IF j == y / 2:
+            old = j;
+            j = j / 2;
+            CONTINUE;
+        END ELSE:
+            j = j - 1;
+        END
+    END
+
+    RET j + old;
+END
+
+`these must have 5`
+
+print(testA(10), 5);
+
+print(testB(10), 5);
+
+RET 0;

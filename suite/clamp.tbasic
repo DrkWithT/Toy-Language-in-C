@@ -2,7 +2,7 @@
 
 LET low : 10.0, high : 20.0;
 
-LET x : clampf(9.75, low, high);
+LET x : clampf(9.75, 10.0, 20.0);
 LET y : clampf(20.5, low, high);
 LET z : clampf(19.5, low, high);
 

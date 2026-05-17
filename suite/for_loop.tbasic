@@ -1,0 +1,14 @@
+`test for loops`
+
+FUN sumFizzBuzz(n):
+    LET total : 0, i : NIL;
+
+    FOR i : 0, i < n, i := i + 15:
+        total = total + i;
+    END
+
+    RET total;
+END
+
+`should give 90`
+RET sumFizzBuzz(99);
