@@ -95,7 +95,10 @@ void Value_copy(MAYBE_UNUSED Value *ins, MAYBE_UNUSED const Value *other);
 void Value_move(MAYBE_UNUSED Value *ins, MAYBE_UNUSED Value *other);
 void Value_del(MAYBE_UNUSED Value *ins);
 
-void print_value(const Value *v);
+void print_string_k(const void *obj_ptr);
+// ! FIXME: use void *ctx to VMState *s, then using its state to invoke stringification a heap object of ID = v.data.i ...
+void print_object(const void *obj_ptr, const void *vm_state);
+void print_value(const Value *v, const void *vm_state);
 
 STUB_VEC(Value)
 

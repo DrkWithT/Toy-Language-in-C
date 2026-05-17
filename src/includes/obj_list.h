@@ -17,5 +17,6 @@ void list_del_fn(void *self);
 int8_t list_as_bool_fn(const void *self);
 Value list_get_v_fn(const void *self, Value key);
 int8_t list_set_v_fn(void *self, Value key, Value item);
+void list_display_fn(const void *self, const void *vm);
 
 #endif
