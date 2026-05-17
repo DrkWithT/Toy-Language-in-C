@@ -1,6 +1,7 @@
 #include <math.h>
 #include "vm.h"
 #include "obj_list.h"
+#include "obj_str.h"
 
 
 
@@ -14,7 +15,7 @@ static const OpFunc opcode_handlers[] = {
     fn_put_k,
     fn_dup,
     fn_pop,
-    fn_load_string,
+    fn_load_string_k,
     fn_mk_list,
     fn_get_idx,
     fn_set_idx,
@@ -112,7 +113,7 @@ VMStatus fn_pop(VMState *s, const Instruction *ip, const Value *cvp, Value *stac
     return vm_dispatch(s, ip, cvp, stack);
 }
 
-VMStatus fn_load_string(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
+VMStatus fn_load_string_k(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
     s->sp++;
     stack[s->sp] = make_value_str(ip->wide);
     ip++;
@@ -669,4 +670,12 @@ Value vm_result(const VMState *s) {
 
 VMStatus vm_run(VMState *s) {
     return vm_dispatch(s, s->ip, s->cvp, s->stack);
+}
+
+int16_t vm_put_heap_string(VMState *s, mystr *string) {
+    if (string == NULL) {
+        return 0;
+    }
+
+    return heap_store(&s->heap, (ObjMutPtr)alloc_string_of_mystr(string));
 }
