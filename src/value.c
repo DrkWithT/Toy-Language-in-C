@@ -24,7 +24,6 @@ void print_string_k(const void *obj_ptr) {
         mystr_len(real_string),
         stdout
     );
-    fprintf(stdout, "\n");
 }
 
 void print_object(const void *obj_ptr, const void *vm_state) {

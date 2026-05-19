@@ -20,7 +20,7 @@ List *alloc_list(size_t initial_size) {
     };
 
     // ? 3: initialize a backing vector of Values to avoid accessing garbage data.
-    AnyVec_Value_new(&temp->data, initial_size, &filler_v);
+    AnyVec_Value_new(&temp->data, (initial_size > 0) ? initial_size : 1, &filler_v);
 
     return temp;
 }

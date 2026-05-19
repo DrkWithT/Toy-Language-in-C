@@ -43,10 +43,23 @@ A very trivial scripting language implemented in C11. Only for educational purpo
 
 #### v0.5.x
  - Add immutable strings as separate, interned values. **OK**
-   - Create string type. **WIP**
+   - Create string type. **OK**
    - Add more library functions:
-      - `stoi`, `stof`
-      - `fopen`, `fclose`, `freadn`, `freadln`, `freadln`
+      - `stoi`, `stof` **OK**
 
-#### v0.6.x
+#### v0.6.x:
+ - Add "struct" objects:
+   - Support struct syntax:
+      - `mut` vs. regular fields
+      - `new` vs. `del` methods
+   - Support `this` keyword syntax.
+   - Create struct object type:
+      - Fixed collection of `str-id` values to properties: `Value` with bit-flags (deep mutability??)
+ - Add struct "tables" which track where to access a property in a struct's buffer.
+   - Enables monomorphic Inline Cache optimization.
+ - Add simple generation for structs... no inheritance.
+ - Add more object opcodes e.g `mk_struct <prop-count> <layout-ID>`, `add_field <is-mut> 0` (requires pushed object ref), `get_field <field-ID> <layout-ID>` (requires pushed object ref), `set_field <field-ID> <layout-ID>` (requires pushed object ref)
+
+#### v0.7.x:
  - DEBUG statement, dumping VM state for troubleshooting.
+ - Make unified API to register native functions & manipulate VM state.
