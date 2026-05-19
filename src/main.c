@@ -11,7 +11,7 @@
 
 
 
-#define VM_STACK_MAX 1024
+#define VM_STACK_MAX 16384
 #define VM_DEPTH_MAX 64
 
 
@@ -96,6 +96,14 @@ static const charspan toyscript_native_names[] = {
     (charspan) {
         .data = "creset",
         .length = 6
+    },
+    (charspan) {
+        .data = "stoi",
+        .length = 4
+    },
+    (charspan) {
+        .data = "stof",
+        .length = 4
     }
 };
 
@@ -168,7 +176,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (show_version) {
-        printf("\x1b[1;33m%s\x1b[0m\n\nv0.4.9\t By: DrkWithT (GitHub)", project_name);
+        printf("\x1b[1;33m%s\x1b[0m\n\nv0.5.1\t By: DrkWithT (GitHub)", project_name);
         return 0;
     } else if (show_help) {
         printf("usage: ./toyscript [-h | -v | [-d | -r] <file name>]\n-h: help\n-v: show version\n");
@@ -197,6 +205,8 @@ int main(int argc, char *argv[]) {
     compiler_map_native(&compiler, &toyscript_native_names[5]);
     compiler_map_native(&compiler, &toyscript_native_names[6]);
     compiler_map_native(&compiler, &toyscript_native_names[7]);
+    compiler_map_native(&compiler, &toyscript_native_names[8]);
+    compiler_map_native(&compiler, &toyscript_native_names[9]);
 
     Program program;
     program_dud(&program);
@@ -204,7 +214,7 @@ int main(int argc, char *argv[]) {
     if (!compiler_do_source(&compiler, &tokenizer, &source_view, &program)) {
         return 1;
     }
-    
+
     if (dump_bc) {
         dump_program(&program);
     }

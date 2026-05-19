@@ -5,8 +5,10 @@
 
 #include <stdio.h>
 #include <math.h>
+
+#include "mystr.h"
 // #include "obj_list.h"
-// #include "obj_str.h"
+#include "obj_str.h"
 #include "vm.h"
 
 
@@ -180,6 +182,74 @@ static inline VMStatus native_console_reset(VMState *s, int argc) {
     clearerr(stdin);
 
     s->stack[callee_bp] = make_value_none();
+    s->sp = callee_bp;
+
+    return 1;
+}
+
+static inline VMStatus native_stoi(VMState *s, int argc) {
+    const int callee_bp = s->sp - argc;
+
+    const Value arg = s->stack[callee_bp + 1];
+    const char *str_chars = NULL;
+    size_t str_length = 0;
+
+    if (arg.tag == vtag_strid) {
+        str_chars = AnyVec_mystr_get(&s->prgm->strings, arg.data.i)->data;
+    } else if (arg.tag == vtag_obj_id) {
+        ObjPtr temp = heap_get(&s->heap, arg.data.obj_id);
+
+        if (temp != NULL && temp->meta.tag == otag_string) {
+            str_chars = ((const String *)temp)->data.data;
+            str_length = ((const String *)temp)->data.length;
+        }
+    }
+
+    charspan sv = {
+        .data = str_chars,
+        .length = str_length
+    };
+
+    if (charspan_empty(&sv)) {
+        s->stack[callee_bp] = make_value_int(0);
+    } else {
+        s->stack[callee_bp] = make_value_int(charspan_atoi(&sv));
+    }
+
+    s->sp = callee_bp;
+
+    return 1;
+}
+
+static inline VMStatus native_stof(VMState *s, int argc) {
+    const int callee_bp = s->sp - argc;
+
+    const Value arg = s->stack[callee_bp + 1];
+    const char *str_chars = NULL;
+    size_t str_length = 0;
+
+    if (arg.tag == vtag_strid) {
+        str_chars = AnyVec_mystr_get(&s->prgm->strings, arg.data.i)->data;
+    } else if (arg.tag == vtag_obj_id) {
+        ObjPtr temp = heap_get(&s->heap, arg.data.obj_id);
+
+        if (temp != NULL && temp->meta.tag == otag_string) {
+            str_chars = ((const String *)temp)->data.data;
+            str_length = ((const String *)temp)->data.length;
+        }
+    }
+
+    charspan sv = {
+        .data = str_chars,
+        .length = str_length
+    };
+
+    if (charspan_empty(&sv)) {
+        s->stack[callee_bp] = make_value_real(0.0f);
+    } else {
+        s->stack[callee_bp] = make_value_real(charspan_checked_atof(&sv));
+    }
+
     s->sp = callee_bp;
 
     return 1;
