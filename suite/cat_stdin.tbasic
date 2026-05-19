@@ -1,4 +1,7 @@
-LET msg : creadln();
+LET msg : NIL;
+
+print("Enter text");
+msg := creadln();
 
 print(msg);
 

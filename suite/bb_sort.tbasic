@@ -1,0 +1,60 @@
+`test bubble sort`
+
+`make worst case input for bubble sort`
+FUN makeNums(n):
+    LET nums : [], i : n;
+
+    WHILE i > 0:
+        nums :: NIL := i;
+
+        i := i - 1;
+    END
+
+    RET nums;
+END
+
+`ascending bubble sort`
+FUN bbSort(nums, len):
+    LET i : 0, j : 0, end : (len - 1), a : NIL, b : NIL;
+
+    IF end < 1:
+        RET nums;
+    END ELSE:
+        `do nothing if check is ok`
+    END
+
+    WHILE i < len:
+        j := 0;
+
+        WHILE j < end:
+            IF (nums :: j) > (nums :: (j + 1)):
+                a := (nums :: j);
+                b := (nums :: (j + 1));
+
+                nums :: (j) := b;
+                nums :: (j + 1) := a;
+            END ELSE:
+                `do nothing`
+                j := j + 0;
+            END
+
+            j := j + 1;
+        END
+
+        i := i + 1;
+    END
+
+    RET nums;
+END
+
+LET count : 100, sample : makeNums(count), nums : NIL;
+
+print("RAW:");
+print(sample);
+
+nums := bbSort(sample, count);
+
+print("SORTED:");
+print(nums);
+
+RET 0;
