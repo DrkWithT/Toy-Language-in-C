@@ -52,4 +52,14 @@ int8_t mystr_equals_raw(const mystr *self, const char *s, size_t n);
 int8_t mystr_equals_charspan(const mystr *self, const charspan *span);
 int8_t mystr_equals_mystr(const mystr *self, const mystr *other);
 
+
+
+int charspan_atoi(const charspan *s);
+float charspan_atof(const charspan *s);
+
+// ! Unlike `charspan_atof()`, this variation will return `float(NAN)` upon invalid & simple float literals:
+// * 1. At most 1 decimal point is allowed.
+// * 2. Any non-digits and non-dots are disallowed.
+float charspan_checked_atof(const charspan *s);
+
 #endif

@@ -11,9 +11,6 @@
 
 STUB_SCALAR_VEC(int)
 
-int charspan_atoi(const charspan *s);
-float charspan_atof(const charspan *s);
-
 
 
 typedef enum symbol_domain_t : uint8_t {
