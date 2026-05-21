@@ -6,7 +6,7 @@
 
 
 
-typedef struct list_obj_t {
+typedef struct ts_list_obj_t {
     ObjBase base;       // ? stores discriminator, metadata flags, and vtable
     AnyVec_Value data;
 } List;

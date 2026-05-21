@@ -20,7 +20,8 @@
 typedef enum obj_tag_t : uint8_t {
     otag_dud,
     otag_list,
-    otag_string
+    otag_string,
+    otag_dict,
 } ObjTag;
 
 typedef enum obj_flags_t : uint8_t {
