@@ -46,7 +46,6 @@ static const LexItem special_lexicals[] = {
     (LexItem) {.literal = "&&", .tag = tk_os_and},
     (LexItem) {.literal = "||", .tag = tk_os_or},
     (LexItem) {.literal = ":=", .tag = tk_os_bind_equals},
-    (LexItem) {.literal = "::", .tag = tk_os_access_of},
     (LexItem) {.literal = ":", .tag = tk_colon}
 };
 

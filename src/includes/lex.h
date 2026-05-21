@@ -36,7 +36,7 @@ typedef enum token_tag_t {
     tk_os_and,
     tk_os_or,
     tk_os_bind_equals,  // ? `:=` is for mutating a variable
-    tk_os_access_of,    // ? `::` for accessing an item by key or index
+    tk_os_access_of,    // ? `.` for accessing a named member
     tk_comma,
     tk_colon,
     tk_semicolon,
@@ -66,7 +66,7 @@ static inline int8_t is_op_symbol(char c) {
     switch (c) {
         case '*': case '/': case '+': case '-': // arithmetic
         case '=': case '!': case '<': case '>': case '|': case '&': // comparisons / logicals
-        case '.': case ':': return 1; // extra
+        case ':': return 1; // extra
         default: return 0;
     }
 }
