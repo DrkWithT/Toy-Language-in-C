@@ -80,12 +80,12 @@ void symbol_table_clear(SymbolTable *self) {
     self->next_local_id = 0;
 }
 
-const SymbolInfo *symbol_table_find(const SymbolTable *symbols, const charspan *s) {
+const SymbolInfo *symbol_table_find(const SymbolTable *symbols, const charspan *s, Domain d) {
     const SymbolInfo *infos_begin = symbols->infos;
     const int entry_n = symbols->length;
 
     for (int entry_pos = 0; entry_pos < entry_n; entry_pos++) {
-        if (charspan_equals_charspan(s, &infos_begin[entry_pos].name)) {
+        if (charspan_equals_charspan(s, &infos_begin[entry_pos].name) && infos_begin[entry_pos].domain == d) {
             return infos_begin + entry_pos;
         }
     }
@@ -271,17 +271,23 @@ size_t compiler_emit_op_flagged(Compiler *self, Program *pg, Opcode op, uint8_t 
 }
 
 const SymbolInfo *compiler_resolve_name(const Compiler *self, const charspan *s) {
-    const SymbolInfo *temp = symbol_table_find(&self->globals, s);
+    const SymbolInfo *temp = symbol_table_find(&self->globals, s, symbol_native);
 
     if (temp != NULL) {
         return temp;
     }
 
-    return symbol_table_find(&self->locals, s);
+    temp = symbol_table_find(&self->globals, s, symbol_func);
+
+    if (temp != NULL) {
+        return temp;
+    }
+
+    return symbol_table_find(&self->locals, s, symbol_local);
 }
 
 const SymbolInfo *compiler_record_function(Compiler *self, Program *pg, const charspan *s, int chunk_id) {
-    const SymbolInfo *result = symbol_table_find(&self->globals, s);
+    const SymbolInfo *result = symbol_table_find(&self->globals, s, symbol_func);
     if (result != NULL) {
         return result;
     }
@@ -296,7 +302,7 @@ const SymbolInfo *compiler_record_function(Compiler *self, Program *pg, const ch
 }
 
 const SymbolInfo *compiler_record_local(Compiler *self, Program *pg, const charspan *s) {
-    const SymbolInfo *result = symbol_table_find(&self->locals, s);
+    const SymbolInfo *result = symbol_table_find(&self->locals, s, symbol_local);
     if (result != NULL) {
         return result;
     }
@@ -313,7 +319,7 @@ const SymbolInfo *compiler_record_local(Compiler *self, Program *pg, const chars
 }
 
 const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const charspan *s_symbol, Value v) {
-    const SymbolInfo *result = symbol_table_find(&self->locals, s_symbol);
+    const SymbolInfo *result = symbol_table_find(&self->locals, s_symbol, symbol_constant);
     if (result != NULL) {
         return result;
     }
@@ -334,10 +340,15 @@ const SymbolInfo *compiler_record_constant(Compiler *self, Program *pg, const ch
 }
 
 const SymbolInfo *compiler_record_string(Compiler *self, Program *pg, const charspan *s) {
+    const SymbolInfo *pre_info = symbol_table_find(&self->globals, s, symbol_string);
+
+    if (pre_info != NULL) {
+        return pre_info;
+    }
+
     mystr str;
     mystr_res(&str, 10);
     mystr_append_charspan(&str, s, s->length);
-    mystr_append_raw(&str, "\"", 1);
 
     SymbolInfo new_info = {
         .name = (charspan) {
@@ -415,6 +426,58 @@ int8_t compiler_do_list(Compiler *self, Lexer *lexer, const charspan *s, Program
     return 1;
 }
 
+int8_t compiler_do_dict(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
+    compiler_eat_tk(self, lexer, s); // ? SKIP '{'
+
+    // ? Here, push a blank dictionary to add properties to...
+    compiler_emit_op(self, pg, op_mk_dict);
+
+    while (!compiler_match_curr(self, tk_eof)) {
+        if (compiler_match_curr(self, tk_rbrace)) {
+            break;
+        }
+
+        if (!compiler_match_curr(self, tk_string)) {
+            compiler_warn(self, "Expected name string for dict field.", &self->curr, s);
+            return 0;
+        }
+        compiler_eat_tk(self, lexer, s);
+
+        charspan temp_key = {
+            .data = s->data + self->prev.begin,
+            .length = self->prev.length
+        };
+
+        const SymbolInfo *key_info = compiler_record_string(self, pg, &temp_key);
+
+        if (key_info == NULL) {
+            return 0;
+        }
+        compiler_emit_op_unflagged(self, pg, op_load_string_k, key_info->id);
+
+        if (!compiler_match_curr(self, tk_colon)) {
+            compiler_warn(self, "Expected ':' before field initializer.", &self->curr, s);
+            return 0;
+        }
+        compiler_eat_tk(self, lexer, s);
+
+        if (!compiler_do_or(self, lexer, s, pg)) {
+            return 0;
+        }
+
+        compiler_emit_op(self, pg, op_set_idx);
+
+        if (!compiler_match_curr(self, tk_semicolon)) {
+            compiler_warn(self, "Expected ';' after dict field.", &self->curr, s);
+            return 0;
+        }
+        compiler_eat_tk(self, lexer, s);
+    }
+    compiler_eat_tk(self, lexer, s);
+
+    return 1;
+}
+
 int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Program *pg) {
     const Token *curr_ref = &self->curr;
     const charspan lexeme = {
@@ -480,6 +543,8 @@ int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Prog
             return 1;
         case tk_lbrack:
             return compiler_do_list(self, lexer, s, pg);
+        case tk_lbrace:
+            return compiler_do_dict(self, lexer, s, pg);
         default:
             compiler_warn(self, "Unexpected token in literal, expected none, true, false, or a name.", curr_ref, s);
             return 0;
@@ -536,9 +601,7 @@ int8_t compiler_do_lhs(Compiler *self, Lexer *lexer, const charspan *s, Program 
     }
 
     if (!compiler_match_prev(self, tk_identifier)) {
-        if (!compiler_match_curr(self, tk_os_access_of)) {
-            ; // ...
-        } else if (!compiler_match_curr(self, tk_os_bind_equals)) {
+        if (!compiler_match_curr(self, tk_os_bind_equals)) {
             compiler_flag_off(self, cgen_assign_to);
         }
 
@@ -554,7 +617,7 @@ int8_t compiler_do_lhs(Compiler *self, Lexer *lexer, const charspan *s, Program 
     }
 
     while (!compiler_match_curr(self, tk_eof)) {
-        if (!compiler_match_curr(self, tk_os_access_of)) {
+        if (!compiler_match_curr(self, tk_lbrack)) {
             break;
         }
         compiler_eat_tk(self, lexer, s);
@@ -562,6 +625,10 @@ int8_t compiler_do_lhs(Compiler *self, Lexer *lexer, const charspan *s, Program 
         if (!compiler_do_or(self, lexer, s, pg)) {
             fprintf(stderr, "Note: See RHS of access-of expression at line %d.\n", self->curr.line);
             return 0;
+        }
+
+        if (compiler_match_curr(self, tk_rbrack)) {
+            compiler_eat_tk(self, lexer, s);
         }
 
         if (compiler_match_curr(self, tk_os_bind_equals)) {
@@ -1152,9 +1219,11 @@ int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Pr
         compiler_eat_tk(self, lexer, s);
 
         const int8_t lhs_has_target_local_old = compiler_flag_of(self, cgen_lhs_local);
+        const int8_t lhs_had_accesses_of = compiler_flag_of(self, cgen_access_of);
         const int8_t lhs_is_assignable_old = compiler_flag_of(self, cgen_assign_to);
 
         compiler_flag_off(self, cgen_lhs_local);
+        compiler_flag_off(self, cgen_access_of);
         compiler_flag_off(self, cgen_assign_to);
 
         if (!compiler_do_or(self, lexer, s, pg)) {
@@ -1164,6 +1233,10 @@ int8_t compiler_do_expr_stmt(Compiler *self, Lexer *lexer, const charspan *s, Pr
 
         if (lhs_is_assignable_old) {
             compiler_flag_on(self, cgen_assign_to);
+        }
+
+        if (lhs_had_accesses_of) {
+            compiler_flag_on(self, cgen_access_of);
         }
 
         if (lhs_has_target_local_old) {

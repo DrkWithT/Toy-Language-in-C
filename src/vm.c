@@ -204,7 +204,7 @@ VMStatus fn_get_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *
     if (!object_ref) {
         s->status = vm_status_err_bad_op;
         return s->status;
-    } else if (object_ref->meta.tag != otag_list) {
+    } else if (object_ref->meta.tag == otag_dud) {
         s->status = vm_status_err_bad_op;
         return s->status;
     } else {
@@ -242,7 +242,7 @@ VMStatus fn_set_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *
     if (!object_ref) {
         s->status = vm_status_err_bad_op;
         return s->status;
-    } else if (object_ref->meta.tag != otag_list) {
+    } else if (object_ref->meta.tag == otag_dud) {
         s->status = vm_status_err_bad_op;
         return s->status;
     } else {

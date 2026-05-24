@@ -27,7 +27,7 @@ FUN bbSort(nums, len):
         j := 0;
 
         WHILE j < end:
-            IF (nums :: j) > (nums :: (j + 1)):
+            IF nums[j] > nums[j + 1]:
                 a := nums[j];
                 b := nums[j + 1];
 

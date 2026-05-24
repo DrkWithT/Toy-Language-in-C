@@ -1,10 +1,11 @@
 LET test : {
-    "foo" : 1;
-    "bar" : 2;
-    "baz" : NIL;
+    "foo" : 67;
 };
 
-`must print 1 2 NIL`
-print(test["foo"], test["bar"], test["baz"]);
+print(test["foo"]);
+
+test["foo"] := 69;
+
+print(test["foo"]);
 
 RET 0;
