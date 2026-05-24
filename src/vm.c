@@ -2,7 +2,7 @@
 #include "vm.h"
 #include "obj_list.h"
 #include "obj_str.h"
-
+#include "obj_dict.h"
 
 
 static const OpFunc opcode_handlers[] = {
@@ -17,6 +17,7 @@ static const OpFunc opcode_handlers[] = {
     fn_pop,
     fn_load_string_k,
     fn_mk_list,
+    fn_mk_dict,
     fn_get_idx,
     fn_set_idx,
     fn_mul,
@@ -163,6 +164,26 @@ VMStatus fn_mk_list(VMState *s, const Instruction *ip, const Value *cvp, Value *
     return vm_dispatch(s, ip, cvp, stack);
 }
 
+VMStatus fn_mk_dict(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
+    GCState_collect(&s->gc, &s->heap, stack, s->sp);
+
+    ObjMutPtr temp_object = (ObjMutPtr)alloc_dict();
+
+    if (!temp_object) {
+        s->status = vm_status_err_abort;
+        return s->status;
+    }
+
+    const int16_t temp_object_id = heap_store(&s->heap, temp_object);
+
+    s->sp++;
+    stack[s->sp] = make_value_obj(temp_object_id);
+    ip++;
+
+    TAILCALL
+    return vm_dispatch(s, ip, cvp, stack);
+}
+
 VMStatus fn_get_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
     /*
      * EXAMPLE: expr foo::0 ;
@@ -199,7 +220,7 @@ VMStatus fn_get_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *
 
 VMStatus fn_set_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
     /*
-     * EXAMPLE: expr foo::0 := 69420;
+     * EXAMPLE: expr foo[0] := 69420;
      *
      * ------ BEFORE --------------------------------
      * | Value(int(69420)) | <-- SP - 0, temporary to store
@@ -209,7 +230,7 @@ VMStatus fn_set_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *
      * ------ AFTER ---------------------------------
      * | (popped!)          |
      * | (popped!)          |
-     * | Value(int(69420))  | <-- SP, assignment leaves the same item, allowing (foo::0 := 1) + 2??
+     * | Value(oid(X))  | <-- SP, assignment leaves the same object, allowing (foo::0 := 1) + 2??
      */
     
     const Value incoming_temp = stack[s->sp];
@@ -227,7 +248,7 @@ VMStatus fn_set_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *
     } else {
         object_ref->set_v(object_ref, stack[s->sp - 1], incoming_temp);
         s->sp -= 2;
-        stack[s->sp] = incoming_temp;
+        // stack[s->sp] = incoming_temp;
     }
 
     ip++;

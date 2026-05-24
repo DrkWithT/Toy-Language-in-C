@@ -45,6 +45,7 @@ typedef enum vm_opcode_t : uint8_t {
     op_pop,
     op_load_string_k,
     op_mk_list,
+    op_mk_dict,
     op_get_idx,
     op_set_idx,
     op_mul,
