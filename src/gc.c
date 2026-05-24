@@ -89,7 +89,7 @@ int8_t IdQueue_push(IdQueue *self, int16_t id) {
 
 int16_t IdQueue_pop(IdQueue *self) {
     if (IdQueue_exhausted(self)) {
-        return NULL;
+        return DUD_HEAP_ID;
     }
 
     const int16_t temp_id = self->items[self->head_pos];
