@@ -1,0 +1,10 @@
+LET test : {
+    "foo" : 1;
+    "bar" : 2;
+    "baz" : NIL;
+};
+
+`must print 1 2 NIL`
+print(test["foo"], test["bar"], test["baz"]);
+
+RET 0;

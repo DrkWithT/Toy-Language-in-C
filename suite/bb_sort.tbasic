@@ -5,7 +5,7 @@ FUN makeNums(n):
     LET nums : [], i : n;
 
     WHILE i > 0:
-        nums :: NIL := i;
+        nums[NIL] := i;
 
         i := i - 1;
     END
@@ -28,11 +28,11 @@ FUN bbSort(nums, len):
 
         WHILE j < end:
             IF (nums :: j) > (nums :: (j + 1)):
-                a := (nums :: j);
-                b := (nums :: (j + 1));
+                a := nums[j];
+                b := nums[j + 1];
 
-                nums :: (j) := b;
-                nums :: (j + 1) := a;
+                nums[j] := b;
+                nums[j + 1] := a;
             END ELSE:
                 `do nothing`
                 j := j + 0;
