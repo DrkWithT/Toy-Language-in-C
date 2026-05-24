@@ -3,6 +3,7 @@
 
 #include "basics.h"
 #include "obj_list.h"
+#include "obj_dict.h"
 #include "gc.h"
 
 
@@ -87,6 +88,10 @@ int8_t IdQueue_push(IdQueue *self, int16_t id) {
 }
 
 int16_t IdQueue_pop(IdQueue *self) {
+    if (IdQueue_exhausted(self)) {
+        return NULL;
+    }
+
     const int16_t temp_id = self->items[self->head_pos];
     self->head_pos = (self->head_pos + 1) % self->capacity;
 
@@ -103,6 +108,65 @@ void IdQueue_reset(IdQueue *self) {
 }
 
 
+
+void PtrQueue_new(PtrQueue *self, int16_t capacity) {
+    const void **temp_buf = calloc(capacity, sizeof(typeof(self->ptrs[0])));
+
+    if (temp_buf != NULL) {
+        for (uint16_t i = 0; i < capacity; i++) {
+            temp_buf[i] = NULL;
+        }
+
+        self->ptrs = temp_buf;
+        self->head_pos = 0;
+        self->tail_pos = 0;
+        self->length = 0;
+        self->capacity = capacity;
+    } else {
+        FATAL_ABORT("Alloc Error", __FILE__, __LINE__, "Failed to allocate PtrQueue::items.")
+    }
+}
+
+void PtrQueue_del(PtrQueue *self) {
+    if (self->ptrs != NULL) {
+        free(self->ptrs);
+        self->ptrs = NULL;
+    }
+}
+
+int8_t PtrQueue_exhausted(const PtrQueue *self) {
+    return self->head_pos == self->tail_pos;
+}
+
+int8_t PtrQueue_push(PtrQueue *self, const void *p) {
+    self->tail_pos = (self->tail_pos + 1) % self->capacity;
+    self->ptrs[self->tail_pos] = p;
+
+    return !PtrQueue_exhausted(self);
+}
+
+const void *PtrQueue_pop(PtrQueue *self) {
+    if (PtrQueue_exhausted(self)) {
+        return NULL;
+    }
+
+    const void *temp_ptr = self->ptrs[self->head_pos];
+    self->head_pos = (self->head_pos + 1) % self->capacity;
+
+    return temp_ptr;
+}
+
+void PtrQueue_reset(PtrQueue *self) {
+    for (uint16_t i = 0; i < self->capacity; i++) {
+        self->ptrs[i] = NULL;
+    }
+
+    self->head_pos = 0;
+    self->tail_pos = 0;
+}
+
+
+
 // ? NOTE: max_object_ids must equal the heap object capacity.
 void GCState_new(GCState *self, int16_t max_object_ids) {
     BitSet_new(&self->reach_bits, (uint16_t)max_object_ids);
@@ -112,6 +176,41 @@ void GCState_new(GCState *self, int16_t max_object_ids) {
 void GCState_del(GCState *self) {
     BitSet_del(&self->reach_bits);
     IdQueue_del(&self->next_ids);
+}
+
+static void GCState_mark_dict_nodes(GCState *self, const Dict *dict) {
+    PtrQueue node_queue;
+    PtrQueue_new(&node_queue, DEFAULT_HEAP_CAPACITY);
+
+    PtrQueue_push(&node_queue, dict->root);
+
+    while (!PtrQueue_exhausted(&node_queue)) {
+        PropPtr next_prop = PtrQueue_pop(&node_queue);
+
+        if (next_prop == NULL) {
+            continue;
+        }
+
+        if (next_prop->data.tag == vtag_obj_id) {
+            BitSet_set_at(&self->reach_bits, next_prop->data.data.obj_id);
+        }
+
+        if (next_prop->l) {
+            // ! Whenever the ring buffer of node pointers is prematurely full, skip ahead to process what we can... Although this handles attempted overwrites of queued pointers, the GC could be swamped on heavy workloads (which TBasic is not meant for) and collect "unreached" but used objects in a swept dict.
+            if (!PtrQueue_push(&node_queue, next_prop->l)) {
+                continue;
+            }
+        }
+
+        if (next_prop->r) {
+            // ! See previous note ~ line 200.
+            if (!PtrQueue_push(&node_queue, next_prop->r)) {
+                continue;
+            }
+        }
+    }
+
+    PtrQueue_del(&node_queue);
 }
 
 void GCState_collect(GCState *self, ObjHeap *heap, const Value *stack_ptr, int stack_sp) {
@@ -142,19 +241,21 @@ void GCState_collect(GCState *self, ObjHeap *heap, const Value *stack_ptr, int s
 
         if (!temp_obj) {
             continue;
-        } else if (temp_obj->meta.tag != otag_list) {
-            continue;
-        }
+        } else if (temp_obj->meta.tag == otag_list) {
+            BitSet_set_at(&self->reach_bits, temp_obj_id);
+            const List *list_obj = (const List *)temp_obj;
 
-        BitSet_set_at(&self->reach_bits, temp_obj_id);
-        const List *list_obj = (const List *)temp_obj;
+            for (size_t item_i = 0; item_i < list_obj->data.length; item_i++) {
+                const Value *item_ref = AnyVec_Value_get(&list_obj->data, item_i);
 
-        for (size_t item_i = 0; item_i < list_obj->data.length; item_i++) {
-            const Value *item_ref = AnyVec_Value_get(&list_obj->data, item_i);
-
-            if (item_ref->tag == vtag_obj_id) {
-                IdQueue_push(&self->next_ids, item_ref->data.obj_id);
+                if (item_ref->tag == vtag_obj_id) {
+                    IdQueue_push(&self->next_ids, item_ref->data.obj_id);
+                }
             }
+        } else if (temp_obj->meta.tag == otag_string) {
+            BitSet_set_at(&self->reach_bits, temp_obj_id);
+        } else if (temp_obj->meta.tag == otag_dict) {
+            GCState_mark_dict_nodes(self, (const Dict *)temp_obj);
         }
     }
 
