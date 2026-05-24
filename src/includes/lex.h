@@ -44,6 +44,8 @@ typedef enum token_tag_t {
     tk_rparen,
     tk_lbrack,
     tk_rbrack,
+    tk_lbrace,
+    tk_rbrace,
     tk_eof
 } TkTag;
 

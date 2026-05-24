@@ -218,6 +218,8 @@ Token lexer_next(Lexer *self, const charspan *s) {
         case ')': return lexer_lex_single(self, tk_rparen, s);
         case '[': return lexer_lex_single(self, tk_lbrack, s);
         case ']': return lexer_lex_single(self, tk_rbrack, s);
+        case '{': return lexer_lex_single(self, tk_lbrace, s);
+        case '}': return lexer_lex_single(self, tk_rbrace, s);
         case '`': return lexer_lex_between(self, tk_comment, s);
         case '\"': return lexer_lex_between(self, tk_string, s);
         default: break;
