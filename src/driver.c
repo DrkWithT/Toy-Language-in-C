@@ -33,7 +33,7 @@ static const LexItem special_lexicals_v[] = {
     (LexItem) {.literal = ":", .tag = tk_colon}
 };
 
-
+IMPL_SCALAR_VEC(NativeFn)
 
 mystr read_file(const char *fname) {
     FILE *fs = fopen(fname, "r");
@@ -141,11 +141,11 @@ Program driver_compile(Driver *d, const char *file_path) {
 int driver_run(Driver *d, const char *file_path) {
     if (driver_get_flag(d, dflag_info)) {
         printf(
-            "\x1b[1;34m%s\x1b[0m\n\n\x1b[1;29mv%d.%d.%d\x1b[0m \x1b[1;30m---\x1b[0m \x1b[1;29mDrkWithT (GitHub)\x1b[0m\n",
+            "\x1b[1;34m%s\x1b[0m\n\x1b[1;29mv%d.%d.%d\x1b[0m  \x1b[1;30m---\x1b[0m  \x1b[1;29mDrkWithT (GitHub)\x1b[0m\n",
             d->config.title,
             d->config.version_major, d->config.version_minor, d->config.version_patch
         );
-        printf("usage: ./tbasic [-h | -v | [-d | -r] <file name>]\n-i: show usage and version\n");
+        printf("usage: ./tbasic [-i | [-d | -r] <file name>]\n\t-i: show usage and version\n");
         return 0;
     }
 

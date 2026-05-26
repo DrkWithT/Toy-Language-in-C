@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         .recursion_max = CONFIG_DEFAULT_VM_RECUR_LIMIT,
         .version_major = 0,
         .version_minor = 6,
-        .version_patch = 1
+        .version_patch = 2
     };
 
     Driver app;
