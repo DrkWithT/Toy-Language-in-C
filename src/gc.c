@@ -273,7 +273,7 @@ void GCState_collect(GCState *self, ObjHeap *heap, const Value *stack_ptr, int s
     BitSet_clear(&self->reach_bits);
     IdQueue_reset(&self->next_ids);
 
-    #if TOYSCRIPT_DEBUG_GC_STATE
+    #if TBASIC_DEBUG_GC_STATE
         printf("GC: Collected %d objects.\n", count);
     #endif
 }
