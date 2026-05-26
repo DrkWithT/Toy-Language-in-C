@@ -10,7 +10,7 @@ elif [[ $mode = "bd" ]]; then
 elif [[ $mode = "br" ]]; then
     cmake -S . -B build -DCMAKE_BUILD_TYPE:STRING=Release && cmake --build build;
     mv ./build/compile_commands.json .;
-    strip ./build/toyscript -o ./toyscript;
+    strip ./build/tbasic -o ./tbasic;
 elif [[ $mode = "bp" ]]; then
     cmake -S . -B build -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo && cmake --build build;
     mv ./build/compile_commands.json .;
