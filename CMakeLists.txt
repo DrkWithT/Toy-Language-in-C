@@ -10,9 +10,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/build")
 set(PROJECT_SOURCES "${PROJECT_SOURCE_DIR}/src")
 set(PROJECT_INCLUDES "${PROJECT_SOURCE_DIR}/src/includes")
 
-add_library(toyscript_impl)
-target_include_directories(toyscript_impl PUBLIC "${PROJECT_INCLUDES}")
-target_sources(toyscript_impl PRIVATE
+add_library(tbasic_lang_impl)
+target_include_directories(tbasic_lang_impl PUBLIC "${PROJECT_INCLUDES}")
+target_sources(tbasic_lang_impl PRIVATE
     "${PROJECT_SOURCES}/mystr.c"
     "${PROJECT_SOURCES}/lex.c"
     "${PROJECT_SOURCES}/value.c"
@@ -24,11 +24,12 @@ target_sources(toyscript_impl PRIVATE
     "${PROJECT_SOURCES}/bytecode.c"
     "${PROJECT_SOURCES}/compiler.c"
     "${PROJECT_SOURCES}/vm.c"
+    "${PROJECT_SOURCES}/driver.c"
 )
 
-add_executable(toyscript)
-target_include_directories(toyscript PUBLIC "${PROJECT_INCLUDES}")
-target_sources(toyscript PRIVATE
+add_executable(tbasic)
+target_include_directories(tbasic PUBLIC "${PROJECT_INCLUDES}")
+target_sources(tbasic PRIVATE
     "${PROJECT_SOURCES}/main.c"
 )
-target_link_libraries(toyscript PRIVATE toyscript_impl)
+target_link_libraries(tbasic PRIVATE tbasic_lang_impl)

@@ -55,5 +55,9 @@ A very trivial scripting language implemented in C11. Only for educational purpo
  - Add `make_dict_dud` opcode to VM & generation. **OK**
 
 #### v0.7.x:
- - DEBUG statement, dumping VM state for troubleshooting.
- - Make unified API to register native functions & manipulate VM state.
+ - Make unified API to register native functions & manipulate VM state. **WIP**
+ - Support shared object library builds for 
+
+#### v0.8.x:
+ - Add support for bytecode serialization / deserialization _with_ required author hash to run properly.
+   - Invoke UB if incorrect.
