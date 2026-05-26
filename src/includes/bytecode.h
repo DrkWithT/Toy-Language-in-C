@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_BYTECODE_H
-#define TOYSCRIPT_BYTECODE_H
+#ifndef TBASIC_BYTECODE_H
+#define TBASIC_BYTECODE_H
 
 #include <stdint.h>
 #include "mystr.h"

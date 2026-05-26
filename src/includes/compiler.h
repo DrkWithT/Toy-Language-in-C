@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_COMPILER_H
-#define TOYSCRIPT_COMPILER_H
+#ifndef TBASIC_COMPILER_H
+#define TBASIC_COMPILER_H
 
 #include "mystr.h"
 #include "lex.h"

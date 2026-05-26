@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_OBJECTS_H
-#define TOYSCRIPT_OBJECTS_H
+#ifndef TBASIC_OBJECTS_H
+#define TBASIC_OBJECTS_H
 
 #include "value.h"
 

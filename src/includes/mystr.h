@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_MYSTR_H
-#define TOYSCRIPT_MYSTR_H
+#ifndef TBASIC_MYSTR_H
+#define TBASIC_MYSTR_H
 
 #include <stdint.h>
 #include <stddef.h>

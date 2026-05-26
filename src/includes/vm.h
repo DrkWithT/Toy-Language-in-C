@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_VM_H
-#define TOYSCRIPT_VM_H
+#ifndef TBASIC_VM_H
+#define TBASIC_VM_H
 
 #include <stdint.h>
 #include "bytecode.h"

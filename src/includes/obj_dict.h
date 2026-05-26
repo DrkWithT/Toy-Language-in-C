@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_DICT_OBJECT_H
-#define TOYSCRIPT_DICT_OBJECT_H
+#ifndef TBASIC_DICT_OBJECT_H
+#define TBASIC_DICT_OBJECT_H
 
 #include "objects.h"
 

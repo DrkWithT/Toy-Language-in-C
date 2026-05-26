@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_VEC_H
-#define TOYSCRIPT_VEC_H
+#ifndef TBASIC_VEC_H
+#define TBASIC_VEC_H
 
 #include <stddef.h>
 #include <stdlib.h>

@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_GC_H
-#define TOYSCRIPT_GC_H
+#ifndef TBASIC_GC_H
+#define TBASIC_GC_H
 
 #include "objects.h"
 

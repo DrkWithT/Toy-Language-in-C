@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_LEX_H
-#define TOYSCRIPT_LEX_H
+#ifndef TBASIC_LEX_H
+#define TBASIC_LEX_H
 
 #include "mystr.h"
 

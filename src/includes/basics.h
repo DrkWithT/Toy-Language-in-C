@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_BASICS_H
-#define TOYSCRIPT_BASICS_H
+#ifndef TBASIC_BASICS_H
+#define TBASIC_BASICS_H
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -10,7 +10,7 @@
 
 // * CONFIG MACROS: set as 0 if unneeded!
 
-#define TOYSCRIPT_DEBUG_GC_STATE 1
+#define TBASIC_DEBUG_GC_STATE 1
 
 
 

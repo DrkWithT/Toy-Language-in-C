@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_NATIVES_H
-#define TOYSCRIPT_NATIVES_H
+#ifndef TBASIC_NATIVES_H
+#define TBASIC_NATIVES_H
 
 
 

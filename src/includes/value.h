@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_VALUE_H
-#define TOYSCRIPT_VALUE_H
+#ifndef TBASIC_VALUE_H
+#define TBASIC_VALUE_H
 
 #include <stdint.h>
 #include "basics.h"
