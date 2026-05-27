@@ -4,10 +4,12 @@
 A very trivial scripting language implemented in C11. Only for educational purposes.
 
 ### Usage - Building
- - Requires CMake 4.2 (but 3.16+ is fine)
+ - Requires CMake 4.2 (Actually, 3.16+ is fine!)
  - Make, Ninja, or another build tool
  - Clang is preferred
  - **Usage:** `./project.sh help`
+   - Statically-linked binary: `./project.sh br`
+   - Dynamically-linked demo binary (uses shared lib): `./project.sh sr`
 
 ### Basic Features
  - BASIC like but...
@@ -56,7 +58,7 @@ A very trivial scripting language implemented in C11. Only for educational purpo
 
 #### v0.7.x:
  - Make unified API to register native functions & manipulate VM state. **WIP**
- - Support shared object library builds, exposing a header API to the shared lib.
+ - Support shared object library builds, exposing a header API to the shared lib. **WIP**
 
 #### v0.8.x:
  - Add support for bytecode serialization / deserialization _with_ required author hash to run properly.
