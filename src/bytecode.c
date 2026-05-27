@@ -10,8 +10,9 @@ static const char *opcode_names[] = {
     "op_put_konst",
     "op_dup",
     "op_pop",
-    "op_load_string",
+    "op_load_string_k",
     "op_mk_list",
+    "op_mk_dict",
     "op_get_idx",
     "op_set_idx",
     "op_mul",
@@ -89,7 +90,7 @@ void dump_program(const Program *pg) {
 
         for (size_t temp_chunk_const_id = 0; temp_chunk_const_id < temp_chunk_const_n; temp_chunk_const_id++) {
             printf("\tconst%zu = ", temp_chunk_const_id);
-            print_value(AnyVec_Value_get(&temp_chunk->constants, temp_chunk_const_id));
+            print_value(AnyVec_Value_get(&temp_chunk->constants, temp_chunk_const_id), NULL);
             printf("\n");
         }
 

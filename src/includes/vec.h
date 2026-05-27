@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_VEC_H
-#define TOYSCRIPT_VEC_H
+#ifndef TBASIC_VEC_H
+#define TBASIC_VEC_H
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -124,7 +124,7 @@ void AnyVec##_##type##_push(AnyVec##_##type *self, const type *value) {\
     const size_t old_capacity = self->capacity;\
     \
     if (next_pos >= old_capacity) {\
-        const size_t new_capacity = (old_capacity * 3) / 2;\
+        const size_t new_capacity = 1 + (old_capacity * 3) / 2;\
         type *temp_p = realloc(self->data, sizeof(type) * new_capacity);\
         \
         if (temp_p == NULL) {\

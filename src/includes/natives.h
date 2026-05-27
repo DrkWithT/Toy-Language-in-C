@@ -1,30 +1,17 @@
-#ifndef TOYSCRIPT_NATIVES_H
-#define TOYSCRIPT_NATIVES_H
+#ifndef TBASIC_NATIVES_H
+#define TBASIC_NATIVES_H
 
 
 
 #include <stdio.h>
 #include <math.h>
-#include "obj_list.h"
+
+#include "mystr.h"
+// #include "obj_list.h"
+#include "obj_str.h"
 #include "vm.h"
 
 
-
-static inline void native_print_object(const ObjHeap *heap, int16_t id) {
-    ObjPtr target_ref = heap_get(heap, id); // ? This pointer views the ObjBase and "vtable" portion of an object.
-
-    // ? NOTE: This is temporary logic to display lists. Dicts types will be supported later!
-    // ! Before downcasts, the tag must be checked for soundness.
-    if (target_ref->meta.tag == otag_list) {
-        const List *target_list = (const List *)target_ref;
-
-        for (size_t i = 0; i < target_list->data.length; i++) {
-            print_value(target_list->data.data + i);
-        }
-    } else {
-        printf("(unknown)");
-    }
-}
 
 static inline void native_print_str(const mystr *strings, int id) {
     if (id < 0) {
@@ -52,14 +39,7 @@ static inline VMStatus native_print(VMState *s, int argc) {
     for (int i = 0; i < argc; i++) {
         const Value *arg_ref = s->stack + callee_bp + 1 + i;
 
-        if (arg_ref->tag == vtag_obj_id) {
-            native_print_object(&s->heap, arg_ref->data.obj_id);
-        } else if (arg_ref->tag == vtag_strid) {
-            native_print_str(s->prgm->strings.data, arg_ref->data.i);
-        } else {
-            print_value(arg_ref);
-        }
-
+        print_value(arg_ref, s);
         printf(" ");
     }
 
@@ -157,6 +137,122 @@ static inline VMStatus native_ceilf(VMState *s, int argc) {
     s->sp = callee_bp;
 
     return vm_status_pending;
+}
+
+static inline VMStatus native_console_readln(VMState *s, int argc) {
+    const int callee_bp = s->sp - argc;
+
+    if (feof(stdin)) {
+        clearerr(stdin);
+    } else if (ferror(stdin)) {
+        fprintf(stderr, "STDIN is in an errorneous state, try console_reset().\n");
+        return 0;
+    }
+
+    size_t input_line = 0;
+    const char *line_begin = fgetln(stdin, &input_line);
+
+    if (line_begin == NULL) {
+        fprintf(stderr, "Failed to read line.\n");
+        return 0;
+    }
+
+    charspan raw_input_view = {
+        .data = line_begin,
+        .length = input_line - 1
+    };
+
+    mystr input_str;
+    mystr_new(&input_str, "");
+    
+    if (!mystr_append_charspan(&input_str, &raw_input_view, raw_input_view.length)) {
+        fprintf(stderr, "Failed to fill string with raw input.\n");
+        return 0;
+    }
+
+    s->stack[callee_bp] = make_value_obj(vm_put_heap_string(s, &input_str));
+    s->sp = callee_bp;
+
+    return 1;
+}
+
+static inline VMStatus native_console_reset(VMState *s, int argc) {
+    const int callee_bp = s->sp - argc;
+
+    clearerr(stdin);
+
+    s->stack[callee_bp] = make_value_none();
+    s->sp = callee_bp;
+
+    return 1;
+}
+
+static inline VMStatus native_stoi(VMState *s, int argc) {
+    const int callee_bp = s->sp - argc;
+
+    const Value arg = s->stack[callee_bp + 1];
+    const char *str_chars = NULL;
+    size_t str_length = 0;
+
+    if (arg.tag == vtag_strid) {
+        str_chars = AnyVec_mystr_get(&s->prgm->strings, arg.data.i)->data;
+    } else if (arg.tag == vtag_obj_id) {
+        ObjPtr temp = heap_get(&s->heap, arg.data.obj_id);
+
+        if (temp != NULL && temp->meta.tag == otag_string) {
+            str_chars = ((const String *)temp)->data.data;
+            str_length = ((const String *)temp)->data.length;
+        }
+    }
+
+    charspan sv = {
+        .data = str_chars,
+        .length = str_length
+    };
+
+    if (charspan_empty(&sv)) {
+        s->stack[callee_bp] = make_value_int(0);
+    } else {
+        s->stack[callee_bp] = make_value_int(charspan_atoi(&sv));
+    }
+
+    s->sp = callee_bp;
+
+    return 1;
+}
+
+static inline VMStatus native_stof(VMState *s, int argc) {
+    const int callee_bp = s->sp - argc;
+
+    const Value arg = s->stack[callee_bp + 1];
+    const char *str_chars = NULL;
+    size_t str_length = 0;
+
+    if (arg.tag == vtag_strid) {
+        str_chars = AnyVec_mystr_get(&s->prgm->strings, arg.data.i)->data;
+    } else if (arg.tag == vtag_obj_id) {
+        ObjPtr temp = heap_get(&s->heap, arg.data.obj_id);
+
+        if (temp != NULL && temp->meta.tag == otag_string) {
+            str_chars = ((const String *)temp)->data.data;
+            str_length = ((const String *)temp)->data.length;
+        }
+    }
+
+    charspan sv = {
+        .data = str_chars,
+        .length = str_length
+    };
+
+    if (charspan_empty(&sv)) {
+        s->stack[callee_bp] = make_value_real(0.0f);
+    } else {
+        s->stack[callee_bp] = make_value_real(charspan_checked_atof(&sv));
+    }
+
+    s->sp = callee_bp;
+
+    return 1;
 }
 
 #endif

@@ -15,11 +15,12 @@ List *alloc_list(size_t initial_size) {
         .del = list_del_fn,
         .as_bool = list_as_bool_fn,
         .get_v = list_get_v_fn,
-        .set_v = list_set_v_fn
+        .set_v = list_set_v_fn,
+        .display = list_display_fn
     };
 
     // ? 3: initialize a backing vector of Values to avoid accessing garbage data.
-    AnyVec_Value_new(&temp->data, initial_size, &filler_v);
+    AnyVec_Value_new(&temp->data, (initial_size > 0) ? initial_size : 1, &filler_v);
 
     return temp;
 }
@@ -63,4 +64,20 @@ int8_t list_set_v_fn(void *self, Value key, Value item) {
     }
 
     return 1;
+}
+
+void list_display_fn(const void *self, const void *vm) {
+    const List *list = (const List *)self;
+    const size_t end_pos = AnyVec_Value_len(&list->data);
+
+    for (size_t i = 0; i < end_pos; i++) {
+        const Value *temp = AnyVec_Value_get(&list->data, i);
+
+        if (temp != NULL) {
+            print_value(temp, vm);
+            fprintf(stdout, " ");
+        }
+    }
+
+    fprintf(stdout, "\n");
 }

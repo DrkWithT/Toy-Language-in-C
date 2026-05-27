@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_COMPILER_H
-#define TOYSCRIPT_COMPILER_H
+#ifndef TBASIC_COMPILER_H
+#define TBASIC_COMPILER_H
 
 #include "mystr.h"
 #include "lex.h"
@@ -10,9 +10,6 @@
 #define DEFAULT_SYMBOL_CAPACITY 8
 
 STUB_SCALAR_VEC(int)
-
-int charspan_atoi(const charspan *s);
-float charspan_atof(const charspan *s);
 
 
 
@@ -43,7 +40,7 @@ typedef struct symbol_table_t {
 SymbolTable make_symbol_table();
 void symbol_table_del(SymbolTable *self);
 void symbol_table_clear(SymbolTable *self);
-const SymbolInfo *symbol_table_find(const SymbolTable *symbols, const charspan *s);
+const SymbolInfo *symbol_table_find(const SymbolTable *symbols, const charspan *s, Domain d);
 const SymbolInfo *symbol_table_push(SymbolTable *symbols, const SymbolInfo *info);
 
 
@@ -117,6 +114,7 @@ void compiler_track_break_pos(Compiler *self, int pos);
 void compiler_track_continue_pos(Compiler *self, int pos);
 
 int8_t compiler_do_list(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
+int8_t compiler_do_dict(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_literal(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_lhs(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);
 int8_t compiler_do_call(Compiler *self, Lexer *lexer, const charspan *s, Program *pg);

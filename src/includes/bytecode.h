@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_BYTECODE_H
-#define TOYSCRIPT_BYTECODE_H
+#ifndef TBASIC_BYTECODE_H
+#define TBASIC_BYTECODE_H
 
 #include <stdint.h>
 #include "mystr.h"
@@ -43,8 +43,9 @@ typedef enum vm_opcode_t : uint8_t {
     op_put_k,
     op_dup,
     op_pop,
-    op_load_string,
+    op_load_string_k,
     op_mk_list,
+    op_mk_dict,
     op_get_idx,
     op_set_idx,
     op_mul,

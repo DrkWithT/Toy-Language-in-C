@@ -4,10 +4,12 @@
 A very trivial scripting language implemented in C11. Only for educational purposes.
 
 ### Usage - Building
- - Requires CMake 4.2 (but 3.16+ is fine)
+ - Requires CMake 4.2 (Actually, 3.16+ is fine!)
  - Make, Ninja, or another build tool
  - Clang is preferred
- - Usage: `./project.sh help`
+ - **Usage:** `./project.sh help`
+   - Statically-linked binary: `./project.sh br`
+   - Dynamically-linked demo binary (uses shared lib): `./project.sh sr`
 
 ### Basic Features
  - BASIC like but...
@@ -39,11 +41,25 @@ A very trivial scripting language implemented in C11. Only for educational purpo
 #### v0.4.x
  - Add for-loop variation with `BREAK;` and `CONTINUE;` **OK**
  - Add negative number literals. **OK**
- - DEBUG statement
+ - Add object display methods. **OK**
 
 #### v0.5.x
- - Add immutable strings as separate, interned values. **WIP**
-   - Create string type.
-   - Create string pool.
-   - Add `FUN readln(fd, delim) -> string`.
-   - Add `FUN fopen(fpath), fclose(fd), fgetc(fd)`
+ - Add immutable strings as separate, interned values. **OK**
+   - Create string type. **OK**
+   - Add more library functions:
+      - `stoi`, `stof` **OK**
+
+#### v0.6.x:
+ - Add "dict objects": **OK**
+ - Add `foo["bar"]` syntax for accessing any keys of objects vs. `::`. **OK**
+ - Add compiler support for not duplicating string constants. **OK**
+ - Add compiler support for dict literals. **OK**
+ - Add `make_dict_dud` opcode to VM & generation. **OK**
+
+#### v0.7.x:
+ - Make unified API to register native functions & manipulate VM state. **WIP**
+ - Support shared object library builds, exposing a header API to the shared lib. **WIP**
+
+#### v0.8.x:
+ - Add support for bytecode serialization / deserialization _with_ required author hash to run properly.
+   - Invoke UB if incorrect.

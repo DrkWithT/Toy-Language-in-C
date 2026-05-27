@@ -4,7 +4,9 @@
 .vscode
 
 build/
+tb_lib/
 bc_dump.txt
 compile_commands.json
 prof*.json
-toyscript
+tbasic
+tbasic_demo

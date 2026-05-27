@@ -1,7 +1,8 @@
 #include <math.h>
 #include "vm.h"
 #include "obj_list.h"
-
+#include "obj_str.h"
+#include "obj_dict.h"
 
 
 static const OpFunc opcode_handlers[] = {
@@ -14,8 +15,9 @@ static const OpFunc opcode_handlers[] = {
     fn_put_k,
     fn_dup,
     fn_pop,
-    fn_load_string,
+    fn_load_string_k,
     fn_mk_list,
+    fn_mk_dict,
     fn_get_idx,
     fn_set_idx,
     fn_mul,
@@ -112,7 +114,7 @@ VMStatus fn_pop(VMState *s, const Instruction *ip, const Value *cvp, Value *stac
     return vm_dispatch(s, ip, cvp, stack);
 }
 
-VMStatus fn_load_string(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
+VMStatus fn_load_string_k(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
     s->sp++;
     stack[s->sp] = make_value_str(ip->wide);
     ip++;
@@ -162,6 +164,26 @@ VMStatus fn_mk_list(VMState *s, const Instruction *ip, const Value *cvp, Value *
     return vm_dispatch(s, ip, cvp, stack);
 }
 
+VMStatus fn_mk_dict(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
+    GCState_collect(&s->gc, &s->heap, stack, s->sp);
+
+    ObjMutPtr temp_object = (ObjMutPtr)alloc_dict();
+
+    if (!temp_object) {
+        s->status = vm_status_err_abort;
+        return s->status;
+    }
+
+    const int16_t temp_object_id = heap_store(&s->heap, temp_object);
+
+    s->sp++;
+    stack[s->sp] = make_value_obj(temp_object_id);
+    ip++;
+
+    TAILCALL
+    return vm_dispatch(s, ip, cvp, stack);
+}
+
 VMStatus fn_get_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
     /*
      * EXAMPLE: expr foo::0 ;
@@ -182,7 +204,7 @@ VMStatus fn_get_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *
     if (!object_ref) {
         s->status = vm_status_err_bad_op;
         return s->status;
-    } else if (object_ref->meta.tag != otag_list) {
+    } else if (object_ref->meta.tag == otag_dud) {
         s->status = vm_status_err_bad_op;
         return s->status;
     } else {
@@ -198,7 +220,7 @@ VMStatus fn_get_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *
 
 VMStatus fn_set_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *stack) {
     /*
-     * EXAMPLE: expr foo::0 := 69420;
+     * EXAMPLE: expr foo[0] := 69420;
      *
      * ------ BEFORE --------------------------------
      * | Value(int(69420)) | <-- SP - 0, temporary to store
@@ -208,7 +230,7 @@ VMStatus fn_set_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *
      * ------ AFTER ---------------------------------
      * | (popped!)          |
      * | (popped!)          |
-     * | Value(int(69420))  | <-- SP, assignment leaves the same item, allowing (foo::0 := 1) + 2??
+     * | Value(oid(X))  | <-- SP, assignment leaves the same object, allowing (foo::0 := 1) + 2??
      */
     
     const Value incoming_temp = stack[s->sp];
@@ -220,13 +242,13 @@ VMStatus fn_set_idx(VMState *s, const Instruction *ip, const Value *cvp, Value *
     if (!object_ref) {
         s->status = vm_status_err_bad_op;
         return s->status;
-    } else if (object_ref->meta.tag != otag_list) {
+    } else if (object_ref->meta.tag == otag_dud) {
         s->status = vm_status_err_bad_op;
         return s->status;
     } else {
         object_ref->set_v(object_ref, stack[s->sp - 1], incoming_temp);
         s->sp -= 2;
-        stack[s->sp] = incoming_temp;
+        // stack[s->sp] = incoming_temp;
     }
 
     ip++;
@@ -669,4 +691,12 @@ Value vm_result(const VMState *s) {
 
 VMStatus vm_run(VMState *s) {
     return vm_dispatch(s, s->ip, s->cvp, s->stack);
+}
+
+int16_t vm_put_heap_string(VMState *s, mystr *string) {
+    if (string == NULL) {
+        return 0;
+    }
+
+    return heap_store(&s->heap, (ObjMutPtr)alloc_string_of_mystr(string));
 }

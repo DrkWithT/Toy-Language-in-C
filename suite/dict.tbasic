@@ -1,0 +1,11 @@
+LET test : {
+    "foo" : 67;
+};
+
+print(test["foo"]);
+
+test["foo"] := 69;
+
+print(test["foo"]);
+
+RET 0;

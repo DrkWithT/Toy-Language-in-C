@@ -1,3 +1,6 @@
+#ifndef TBASIC_API_H
+#define TBASIC_API_H
+
 #include <stdio.h>
 
 #include "mystr.h"
@@ -5,15 +8,17 @@
 #include "driver.h"
 
 
-
-static const char *project_name =                            
-" _____ _____         _     \n"
-"|_   _| __  |___ ___|_|___ \n"
-"  | | | __ -| .'|_ -| |  _|\n"
-"  |_| |_____|__,|___|_|___|\n";
-                           
-
-int main(int argc, char *argv[]) {
+/**
+ * @brief This is the main routine which sets up and runs the TBasic interpreter, exposed as the one API item.
+ * 
+ * @param argv --- `main()` argument stirngs
+ * @param argc --- `main()` argument count, including process path
+ * @param native_names --- N-sized array of `charspan`s, each viewing a static lifetime `const char *`
+ * @param native_fns --- N-sized array of function pointer type `VMStatus (*)(VMState *, int)`
+ * @param n --- Length of `native_names` and `native_fns`.
+ * @return int --- `0` on success, `1` on failure.
+ */
+static inline int tbasic_run(const char *argv[], int argc, const charspan *native_names, const NativeFn *native_fns, int n) {
     const char *source_fpath = NULL;
     int8_t show_info = 0;
     int8_t dump_bc = 0;
@@ -32,13 +37,16 @@ int main(int argc, char *argv[]) {
     }
 
     DriverConfig config = {
-        .title = project_name,
+        .title = " _____ _____         _     \n"
+                 "|_   _| __  |___ ___|_|___ \n"
+                 "  | | | __ -| .'|_ -| |  _|\n"
+                 "  |_| |_____|__,|___|_|___|\n",
         .stack_capacity = CONFIG_DEFAULT_VM_LOCALS,
         .heap_capacity = CONFIG_DEFAULT_VM_HEAP_POPULATION,
         .recursion_max = CONFIG_DEFAULT_VM_RECUR_LIMIT,
         .version_major = 0,
         .version_minor = 6,
-        .version_patch = 2
+        .version_patch = 3
     };
 
     Driver app;
@@ -60,5 +68,15 @@ int main(int argc, char *argv[]) {
     driver_bind_native(&app, (charspan) {.data = "stoi", .length = 4}, native_stoi);
     driver_bind_native(&app, (charspan) {.data = "stof", .length = 4}, native_stof);
 
+    if (n < 1) {
+        n = 0;
+    }
+
+    for (int i = 0; i < n; i++) {
+        driver_bind_native(&app, native_names[i], native_fns[i]);
+    }
+
     return driver_run(&app, source_fpath);
 }
+
+#endif

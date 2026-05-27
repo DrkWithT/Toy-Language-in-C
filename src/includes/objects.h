@@ -1,5 +1,5 @@
-#ifndef TOYSCRIPT_OBJECTS_H
-#define TOYSCRIPT_OBJECTS_H
+#ifndef TBASIC_OBJECTS_H
+#define TBASIC_OBJECTS_H
 
 #include "value.h"
 
@@ -12,10 +12,16 @@
 #define DUD_HEAP_ID ((int16_t) -1)
 #define OBJECT_COST ((size_t) 64)
 
+#define DEFAULT_STRING_POOL_CAPACITY ((int16_t) 512)
+#define DEFAULT_STRING_SIZE ((size_t) 8)
+#define STRING_PREPEND_KEY ((int) -1)
+#define STRING_COST OBJECT_COST
+
 typedef enum obj_tag_t : uint8_t {
     otag_dud,
     otag_list,
-    // otag_dict
+    otag_string,
+    otag_dict,
 } ObjTag;
 
 typedef enum obj_flags_t : uint8_t {
@@ -36,6 +42,7 @@ typedef struct obj_base_t {
     int8_t (*as_bool) (const void *self);
     Value (*get_v) (const void *self, Value key);
     int8_t (*set_v) (void *self, Value key, Value item);
+    void (*display) (const void *self, const void *vm);
 } ObjBase;
 
 typedef const ObjBase* ObjPtr;

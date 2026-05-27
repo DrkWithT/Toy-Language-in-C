@@ -1,15 +1,15 @@
-#ifndef TOYSCRIPT_MYSTR_H
-#define TOYSCRIPT_MYSTR_H
+#ifndef TBASIC_MYSTR_H
+#define TBASIC_MYSTR_H
 
 #include <stdint.h>
 #include <stddef.h>
 
-static const size_t alisp_mystr_default_capacity_v = 16;
+static const size_t tbasic_mystr_default_capacity_v = 16;
 
 //? NOTE: Forward declaration of mystr:
-typedef struct alisp_mystr_t mystr;
+typedef struct tbasic_mystr_t mystr;
 
-typedef struct alisp_mycharspan_t {
+typedef struct tbasic_mycharspan_t {
     const char* data;
     size_t length;
 } charspan;
@@ -27,7 +27,7 @@ int8_t charspan_equals_charspan(const charspan *self, const charspan *other);
 
 
 
-typedef struct alisp_mystr_t {
+typedef struct tbasic_mystr_t {
     char *data;
     size_t length;
     size_t capacity;
@@ -51,5 +51,15 @@ int8_t mystr_append_mystr(mystr *self, const mystr *other);
 int8_t mystr_equals_raw(const mystr *self, const char *s, size_t n);
 int8_t mystr_equals_charspan(const mystr *self, const charspan *span);
 int8_t mystr_equals_mystr(const mystr *self, const mystr *other);
+
+
+
+int charspan_atoi(const charspan *s);
+float charspan_atof(const charspan *s);
+
+// ! Unlike `charspan_atof()`, this variation will return `float(NAN)` upon invalid & simple float literals:
+// * 1. At most 1 decimal point is allowed.
+// * 2. Any non-digits and non-dots are disallowed.
+float charspan_checked_atof(const charspan *s);
 
 #endif

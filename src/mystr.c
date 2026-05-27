@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "mystr.h"
 
 
@@ -33,7 +34,7 @@ void charspan_del(charspan *self) {
 
 
 int8_t charspan_empty(const charspan *self) {
-    return self->length == 0 || !self->data;
+    return self->data == NULL || self->length == 0;
 }
 
 size_t charspan_len(const charspan *self) {
@@ -221,3 +222,108 @@ int8_t mystr_equals_mystr(const mystr *self, const mystr *other) {
 
     return !strncmp(self->data, other->data, self->length);
 }
+
+
+
+// ! This is UNCHECKED, assuming that the charspan is for a valid integer lexeme after tokenization.
+int charspan_atoi(const charspan *s) {
+    int result = 0;
+    int base = 1;
+    
+    if (s->length > 8) {
+        return 0;
+    }
+
+    const int8_t is_signed = s->data[0] == '-';
+
+    for (int i = s->length - 1; i >= is_signed; i--, base *= 10) {
+        const int digit = s->data[i] - '0';
+
+        result += digit * base;
+    }
+
+    if (is_signed) {
+        result = -result;
+    }
+
+    return result;
+}
+
+float charspan_atof(const charspan *s) {
+    static const float digit_vals[] = {0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0, 7.0f, 8.0f, 9.0f}; // ! NOTE: This uses a lookup table for digits as floats... Casting int to float is slow because of RAX <--> XMM.
+
+    float result = 0.0f;
+    float base = 1.0f;
+    const int8_t is_signed = s->data[0] == '-';
+
+    for (int point_search_pos = is_signed; point_search_pos < s->length; point_search_pos++) {
+        if (s->data[point_search_pos + 1] == '.') {
+            break;
+        }
+
+        base *= 10.0f;
+    }
+
+    for (int i = is_signed; i < s->length; i++) {
+        const char c = s->data[i];
+
+        if (c == '.') {
+            continue;
+        }
+
+        result += digit_vals[c - '0'] * base;
+        base /= 10.0f;
+    }
+
+    if (is_signed) {
+        result = -result;
+    }
+
+    return result;
+}
+
+float charspan_checked_atof(const charspan *s) {
+    static const float digit_vals[] = {0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0, 7.0f, 8.0f, 9.0f};
+
+    float result = 0.0f;
+    float base = 1.0f;
+    const int8_t is_signed = s->data[0] == '-';
+    int8_t reached_point = 0;
+
+    for (int point_search_pos = is_signed; point_search_pos < s->length; point_search_pos++) {
+        if (s->data[point_search_pos + 1] == '.') {
+            break;
+        }
+
+        base *= 10.0f;
+    }
+
+    for (int i = is_signed; i < s->length; i++) {
+        const char c = s->data[i];
+
+        if (c == '.') {
+            if (reached_point) {
+                result = NAN;
+                break;
+            } else {
+                reached_point = 1;
+                continue;
+            }
+        }
+
+        if (c >= '0' && c <= '9') {   
+            result += digit_vals[c - '0'] * base;
+            base /= 10.0f;
+        } else {
+            result = NAN;
+            break;
+        }
+    }
+
+    if (is_signed) {
+        result = -result;
+    }
+
+    return result;
+}
+
