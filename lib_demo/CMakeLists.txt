@@ -1,0 +1,10 @@
+if (DEFINED CREATE_TBASIC_SHARED)
+    add_executable(tbasic_demo)
+    target_include_directories(tbasic_demo PUBLIC ${PROJECT_INCLUDES})
+    # NOTE: The tbasic_lib should be installed at the project directory root by this point.
+    target_link_directories(tbasic_demo PRIVATE ${PROJECT_ROOT})
+    target_sources(tbasic_demo PUBLIC ./hello_demo.c)
+    target_link_libraries(tbasic_demo PRIVATE tbasic_lib)
+else ()
+    message(FATAL_ERROR "The top-level CMakeLists.txt must run to generate TBasic's shared library before attempting to build the demo.")
+endif ()

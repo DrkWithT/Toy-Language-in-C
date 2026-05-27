@@ -8,3 +8,4 @@ bc_dump.txt
 compile_commands.json
 prof*.json
 tbasic
+tbasic_demo
